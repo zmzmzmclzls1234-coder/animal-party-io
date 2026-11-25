@@ -1,0 +1,14 @@
+{
+  "name": "animal-party-io",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ANIMAL PARTY.io - io party game collection with 5-player parties",
+  "main": "server.js",
+  "scripts": {
+    "postinstall": "node scripts/fetch-three.mjs",
+    "build": "node scripts/fetch-three.mjs",
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED"
+}
