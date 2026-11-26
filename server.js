@@ -16,7 +16,6 @@ const server = http.createServer((req, res) => {
   try { u = decodeURIComponent((req.url || '/').split('?')[0]); } catch (e) { }
   if (u === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('ok'); }
   if (u === '/stats') { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ online: clients.size, rooms: parties.size })); }
-  if (u === '/stats') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ clients: clients.size, parties: parties.size })); }
   if (u.endsWith('/')) u += 'index.html';
   const file = path.normalize(path.join(PUB, u));
   if (!file.startsWith(PUB)) { res.writeHead(403); return res.end(); }
@@ -40,7 +39,7 @@ class Client {
     sock.on('close', () => this.onClose());
     sock.on('error', () => this.onClose());
     clients.add(this);
-    this.send({ t: 'hello', id: this.id });
+    this.send({ t: 'hello', id: this.id, event: liveEvent(), gift: lastGift });
   }
   onData(d) {
     this.buf = this.buf.length ? Buffer.concat([this.buf, d]) : d;
@@ -87,7 +86,7 @@ server.on('upgrade', (req, sock) => {
   const acc = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n');
   sock.setNoDelay(true);
-  new Client(sock);
+  const cl = new Client(sock); cl.ip = String(req.headers['x-forwarded-for'] || sock.remoteAddress || '').split(',')[0].trim();
 });
 setInterval(() => { for (const c of clients) c.rate = 0; }, 1000);
 setInterval(() => { for (const c of clients) { if (!c.alive) { c.close(); continue; } c.alive = false; c.raw(0x9, Buffer.alloc(0)); } }, 25000);
@@ -102,8 +101,38 @@ function cleanProfile(p) {
   return { name: str(p.name, 12, 'Player'), animal: ANIMALS.includes(p.animal) ? p.animal : 'cat', color: Number.isInteger(p.color) ? p.color : null, hat: str(p.hat, 16, 'none'), face: str(p.face, 16, 'none'), back: str(p.back, 16, 'none') };
 }
 function partyState(p) { return { code: p.code, leader: p.leader, pub: !!p.pub, show: p.show || null, inMatch: !!p.inMatch, startIn: p.pub && !p.inMatch ? Math.max(0, p.startAt - Date.now()) : null, members: p.members.map(c => ({ id: c.id, profile: c.profile })) }; }
+// ---- Admin tools (set ADMIN_KEY on Render to enable) ----
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+let event = null, lastGift = null; const badTries = new Map();
+const liveEvent = () => (event && event.until > Date.now() ? event : null);
+function toAll(obj) { const s = JSON.stringify(obj); for (const c of clients) c.send(s); }
+function adminCmd(c, m) {
+  const ip = c.ip || 'x', bt = badTries.get(ip) || { n: 0, t: 0 };
+  if (bt.n >= 5 && Date.now() - bt.t < 10 * 60e3) return c.send({ t: 'admin', ok: false, msg: 'Too many wrong keys. Try again later.' });
+  if (!ADMIN_KEY) return c.send({ t: 'admin', ok: false, msg: 'Admin is disabled: set ADMIN_KEY on the server.' });
+  if (typeof m.key !== 'string' || m.key !== ADMIN_KEY) { badTries.set(ip, { n: bt.n + 1, t: Date.now() }); return c.send({ t: 'admin', ok: false, msg: 'Wrong admin key' }); }
+  badTries.delete(ip);
+  const txt = v => String(v || '').replace(/[<>]/g, '').slice(0, 140);
+  switch (m.op) {
+    case 'login': break;
+    case 'shout': if (txt(m.text)) toAll({ t: 'shout', text: txt(m.text), name: txt(m.name).slice(0, 16) || 'ADMIN' }); break;
+    case 'event': {
+      const cm = Math.min(10, Math.max(1, +m.coinMul || 1)), xm = Math.min(10, Math.max(1, +m.xpMul || 1)), min = Math.min(24 * 60, Math.max(1, +m.minutes || 15));
+      event = { title: txt(m.title) || `${cm}x COINS EVENT`, coinMul: cm, xpMul: xm, until: Date.now() + min * 60e3 };
+      toAll({ t: 'event', event }); break;
+    }
+    case 'stopEvent': event = null; toAll({ t: 'event', event: null }); break;
+    case 'gift': {
+      const coins = Math.min(100000, Math.max(1, Math.floor(+m.coins || 0)));
+      lastGift = { id: Date.now().toString(36), coins, text: txt(m.text) || 'A gift from the admin!', until: Date.now() + 30 * 60e3 };
+      toAll({ t: 'gift', gift: lastGift }); break;
+    }
+    default: return c.send({ t: 'admin', ok: false, msg: 'Unknown command' });
+  }
+  c.send({ t: 'admin', ok: true, op: m.op, online: clients.size, rooms: parties.size, event: liveEvent() });
+}
 // ---- Quick Play: public rooms of strangers, bots fill the empty seats ----
-const PUB_MAX = 6, PUB_WAIT = 7000, PUB_JOIN_GRACE = 4000, PUB_MAX_WAIT = 15000;
+const PUB_MAX = 6, PUB_WAIT = 3000, PUB_JOIN_GRACE = 2000, PUB_MAX_WAIT = 8000;
 function quickJoin(c, show) {
   const now = Date.now();
   let best = null;
@@ -151,6 +180,7 @@ function handle(c, m) {
     }
     case 'quick': leaveParty(c); c.profile = cleanProfile(m.profile); quickJoin(c, /^[a-z]{3,8}$/.test(m.show) ? m.show : 'main'); break;
     case 'leave': leaveParty(c); break;
+    case 'admin': adminCmd(c, m); break;
     case 'profile': if (c.party) { c.profile = cleanProfile(m.profile); broadcastParty(c.party); } break;
     case 'relay': {
       const p = c.party; if (!p) return;
