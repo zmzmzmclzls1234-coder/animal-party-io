@@ -34,10 +34,10 @@ function drawTitle(g, L, W, H, pulse = 1) {
   const lh = size * 0.95, y0 = -(lines.length - 1) * lh / 2;
   lines.forEach(([main, tail], i) => {
     const fs = size, fs2 = size * 0.62;
-    g.font = `${fs}px "Titan One"`; const w1 = g.measureText(main).width; g.font = `${fs2}px "Titan One"`; const w2 = tail ? g.measureText(tail).width + fs * 0.04 : 0;
+    g.font = `${fs}px "Titan One", "Arial Black", sans-serif`; const w1 = g.measureText(main).width; g.font = `${fs2}px "Titan One", "Arial Black", sans-serif`; const w2 = tail ? g.measureText(tail).width + fs * 0.04 : 0;
     let x = -(w1 + w2) / 2; const y = y0 + i * lh;
     const seg = (txt, f, col, xx) => {
-      g.font = `${f}px "Titan One"`; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      g.font = `${f}px "Titan One", "Arial Black", sans-serif`; g.textBaseline = 'middle'; g.lineJoin = 'round';
       g.fillStyle = INK; g.fillText(txt, xx, y + size * 0.09);                    // drop
       g.strokeStyle = INK; g.lineWidth = size * 0.17; g.strokeText(txt, xx, y);    // outline
       g.fillStyle = col; g.fillText(txt, xx, y);
