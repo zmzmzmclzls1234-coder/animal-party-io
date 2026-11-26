@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
 const PUB = path.resolve(process.env.PUBLIC_DIR || path.join(__dirname, 'public'));
 const PARTY_MAX = 5;
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.ico': 'image/x-icon', '.txt': 'text/plain' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.ico': 'image/x-icon', '.txt': 'text/plain', '.zip': 'application/zip', '.mp4': 'video/mp4', '.webm': 'video/webm' };
 
 // ---------------- HTTP ----------------
 const server = http.createServer((req, res) => {
