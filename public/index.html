@@ -144,6 +144,25 @@ input.field{pointer-events:auto;font-family:'Titan One',sans-serif;font-size:20p
 @keyframes rot{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
 @media (orientation:portrait) and (pointer:coarse){#rotate{display:grid}}
 html.cg #rotate{display:none!important}
+.tab .dot{position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:#ff3d6e;border:3px solid var(--ink)}
+.tab{position:relative}
+.giftbox{background:linear-gradient(135deg,#ffd21f,#ff8a3d);border:var(--line);border-radius:18px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.gtitle,.qtitle{font-family:'Titan One',sans-serif;font-size:20px}.gtitle small,.qtitle small{font-family:Fredoka;font-size:13px;opacity:.7;margin-left:6px}
+.gdays{display:flex;gap:6px}.gday{flex:1;background:#fff;border:3px solid var(--ink);border-radius:12px;text-align:center;font-size:12px;padding:4px 0;font-weight:700}
+.gday b{display:block;font-family:'Titan One';font-size:15px}.gday.got{background:#3ddc84}.gday.now{background:#fff3a6;transform:scale(1.08)}
+.qtitle{margin-top:12px}
+#questsPanel{overflow-y:auto}
+.quest{display:flex;align-items:center;gap:10px;border:3px solid var(--ink);border-radius:14px;padding:8px 10px;margin-top:8px;background:#f3eeff}
+.quest.done{background:#c9f7da}.quest .qt{flex:1;font-weight:700}.quest .qb{height:10px;background:#ddd;border-radius:6px;overflow:hidden;margin-top:4px}.quest .qb i{display:block;height:100%;background:#7a5cff}
+.quest .qr{font-family:'Titan One';display:flex;align-items:center;gap:3px}
+.msub{font-family:'Titan One',sans-serif;font-size:22px;margin:8px 0}
+#matchCancel{margin-top:6px}
+.online{font-size:14px;opacity:.9;text-align:center;margin-top:6px}.online i{display:inline-block;width:10px;height:10px;border-radius:50%;background:#3ddc84;margin-right:5px;border:2px solid var(--ink)}
+.rlines{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;align-items:center}
+.rline{font-weight:700;font-size:15px;display:flex;gap:6px;align-items:center}
+.unlock{width:min(360px,80vw);margin:0 auto 12px}.unlock .ub{height:14px;border:3px solid var(--ink);border-radius:8px;overflow:hidden;background:#fff}.unlock .ub i{display:block;height:100%;background:linear-gradient(90deg,#ffd21f,#ff8a3d)}
+.unlock .ut{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;justify-content:space-between}
+
 body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:auto!important;background:#2a1c5a}
 #adwait{position:fixed;inset:0;z-index:60;background:rgba(27,15,58,.55);display:grid;place-items:center}
 #adwait.hidden{display:none}
@@ -237,11 +256,12 @@ body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:au
       <div class="nav">
         <button class="tab on" data-tab="home">HOME</button>
         <button class="tab" data-tab="custom">CUSTOMIZE</button>
-        <button class="tab" data-tab="shows">SHOWS</button>
+        <button class="tab" data-tab="shows">MODES</button>
+        <button class="tab" data-tab="quests">QUESTS<i class="dot hidden" id="questDot"></i></button>
         <button class="tab" data-tab="shop">SHOP</button>
       </div>
       <div class="wallet">
-        <div class="pill"><svg class="ico" viewBox="0 0 64 64" width="30" height="30"><path d="M10 44 L14 18 L26 32 L32 12 L38 32 L50 18 L54 44 Z" fill="#ffd21f" stroke="#1b0f3a" stroke-width="5" stroke-linejoin="round"/><rect x="10" y="44" width="44" height="9" rx="3" fill="#ffb300" stroke="#1b0f3a" stroke-width="5"/></svg><b id="crownCount">0</b></div>
+        <div class="pill"><span id="trophyIco"></span><b id="crownCount">0</b></div>
         <div class="pill"><svg class="ico" viewBox="0 0 64 64" width="30" height="30"><circle cx="32" cy="32" r="22" fill="#ffd21f" stroke="#1b0f3a" stroke-width="5"/><circle cx="32" cy="32" r="13" fill="none" stroke="#e0a100" stroke-width="4"/></svg><b id="coinCount">0</b></div>
         <button class="btn sq" id="soundBtn"></button>
       </div>
@@ -268,8 +288,9 @@ body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:au
         </div>
       </div>
       <div class="home-right">
-        <div class="showcard" id="showCard"><span id="showIco"></span><div><small>SHOW (tap to change)</small><div class="t ol-s" id="showName">Main Show</div><small id="showDesc"></small></div></div>
+        <div class="showcard" id="showCard"><span id="showIco"></span><div><small>MODE (tap to change)</small><div class="t ol-s" id="showName">Party Mix</div><small id="showDesc"></small></div></div>
         <button class="btn" id="playBtn">PLAY!</button>
+        <div class="online ol-s hidden" id="onlineNow"><i></i><span></span></div>
       </div>
       <div class="hint-rot ol-s">Drag your character to spin it</div>
     </div>
@@ -279,7 +300,13 @@ body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:au
       <div class="cats" id="customCats"></div>
       <div class="grid" id="customGrid"></div>
     </div>
-    <div id="showsPanel" class="panel hidden"><h2>SHOWS</h2><div class="showgrid" id="showGrid"></div></div>
+    <div id="showsPanel" class="panel hidden"><h2>MODES</h2><div class="showgrid" id="showGrid"></div></div>
+    <div id="questsPanel" class="panel hidden">
+      <h2>DAILY</h2>
+      <div class="giftbox"><div class="gtitle">DAILY GIFT <small id="giftSub"></small></div><div class="gdays" id="giftDays"></div><button class="btn yellow" id="giftBtn">CLAIM</button></div>
+      <div class="qtitle">TODAY'S QUESTS <small>reset daily</small></div>
+      <div id="questList"></div>
+    </div>
     <div id="shopPanel" class="panel hidden">
       <h2>SHOP <span class="pill" style="font-size:18px"><svg class="ico" viewBox="0 0 64 64" width="24" height="24"><circle cx="32" cy="32" r="22" fill="#ffd21f" stroke="#1b0f3a" stroke-width="5"/></svg><span id="shopCoins">∞</span></span></h2>
       <div class="cats" id="shopCats"></div>
@@ -299,7 +326,7 @@ body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:au
   <div id="drawUI" class="hidden"></div>
   <div id="touch" class="hidden"><div id="joy"><div id="knob"></div></div><button id="btnB" class="tbtn">B</button><button id="btnA" class="tbtn">A</button></div>
 
-  <div id="match" class="overlay hidden"><div class="card"><div class="mtitle ol-s">FINDING PLAYERS</div><div class="mcount ol" id="matchCount">1/8</div><div class="beans" id="matchBeans"></div></div></div>
+  <div id="match" class="overlay hidden"><div class="card"><div class="mtitle ol-s" id="matchTitle">FINDING PLAYERS</div><div class="mcount ol" id="matchCount">1/8</div><div class="beans" id="matchBeans"></div><div class="msub ol-s" id="matchSub"></div><button class="btn hidden" id="matchCancel">CANCEL</button></div></div>
   <div id="intro" class="overlay hidden"></div>
   <div id="count" class="ol hidden"></div>
   <div id="banner" class="hidden"></div>
@@ -320,9 +347,9 @@ catch (e) { THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/bui
 
 // ======= CONFIG =======
 const CONFIG = {
-  UNLIMITED_MONEY: true,   // infinite coins (dev)
-  UNLOCK_ALL: true,        // every animal & accessory unlocked (dev)
-  START_COINS: 500,
+  UNLIMITED_MONEY: false,  // true = infinite coins (dev only)
+  UNLOCK_ALL: false,       // true = everything unlocked (dev only)
+  START_COINS: 200,
   SERVER_URL: 'wss://animal-party-io.onrender.com', // party server (used when the page is not served by it, e.g. on CrazyGames)
   PARTY_MAX: 5,
   SOUND_FILES: false,      // true = load sounds/<name>.mp3 when present (falls back to synth)
@@ -349,14 +376,14 @@ const css = n => hexs(n);
 const ANIMALS = {
   cat:    { name: 'Cat',    body: 0xffa04a, belly: 0xfff0d8, face: 0xfff0d8, iris: 0x58c25a, nose: 0xff7a9a, paw: 0xfff0d8, price: 0 },
   dog:    { name: 'Dog',    body: 0xc48a56, belly: 0xfff1e0, face: 0xfff1e0, iris: 0x6b4226, nose: 0x2b1d2a, paw: 0xfff1e0, price: 0 },
-  panda:  { name: 'Panda',  body: 0xfbfbfb, belly: 0xffffff, face: 0xffffff, iris: 0x3b2a20, nose: 0x2b1d2a, limb: 0x2b2830, paw: 0x2b2830, price: 1000 },
-  rabbit: { name: 'Bunny',  body: 0xffe2ec, belly: 0xffffff, face: 0xffffff, iris: 0xd9466b, nose: 0xff7a9a, paw: 0xffffff, price: 1000 },
-  fox:    { name: 'Fox',    body: 0xff7426, belly: 0xffffff, face: 0xffffff, iris: 0xf2a516, nose: 0x2b1d2a, limb: 0x3b2618, paw: 0x3b2618, price: 1500 },
+  panda:  { name: 'Panda',  body: 0xfbfbfb, belly: 0xffffff, face: 0xffffff, iris: 0x3b2a20, nose: 0x2b1d2a, limb: 0x2b2830, paw: 0x2b2830, price: 600 },
+  rabbit: { name: 'Bunny',  body: 0xffe2ec, belly: 0xffffff, face: 0xffffff, iris: 0xd9466b, nose: 0xff7a9a, paw: 0xffffff, price: 600 },
+  fox:    { name: 'Fox',    body: 0xff7426, belly: 0xffffff, face: 0xffffff, iris: 0xf2a516, nose: 0x2b1d2a, limb: 0x3b2618, paw: 0x3b2618, price: 900 },
 };
 const ANIMAL_IDS = Object.keys(ANIMALS);
 const SKIN_COLORS = [null, 0xff6fa8, 0xffd23f, 0x4fc3f7, 0x7ee081, 0xb388ff, 0xff8a50, 0xf4f4f4, 0x5c6bc0, 0xef5350, 0x26c6a6, 0x8d6e63];
 const HATS = [
-  { id: 'none', name: 'None', price: 0 }, { id: 'party', name: 'Party Hat', price: 200 }, { id: 'crown', name: 'Crown', price: 800 },
+  { id: 'none', name: 'None', price: 0 }, { id: 'party', name: 'Party Hat', price: 0 }, { id: 'crown', name: 'Crown', price: 800 },
   { id: 'tophat', name: 'Top Hat', price: 400 }, { id: 'beanie', name: 'Beanie', price: 250 }, { id: 'flower', name: 'Flower Pin', price: 150 },
 ];
 const FACES = [
@@ -380,7 +407,7 @@ function owns(id) {
   if (CONFIG.UNLOCK_ALL) return true;
   const [type, key] = id.split(':');
   if (key === 'none') return true;
-  if (type === 'animal' && ANIMALS[key].price === 0) return true;
+  if (priceOf(id) === 0) return true;
   return save.owned.includes(id);
 }
 function priceOf(id) {
@@ -1236,6 +1263,7 @@ const Net = {
   },
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
   async create() { await this.connect(); this.send({ t: 'create', profile: netProfile() }); },
+  async quick() { await this.connect(); if (!QP.want) return; this.send({ t: 'quick', profile: netProfile(), show: save.show === 'draw' ? 'main' : save.show }); },
   async join(code) { await this.connect(); this.send({ t: 'join', code: String(code).toUpperCase().replace(/[^A-Z0-9]/g, ''), profile: netProfile() }); },
   leave() { this.send({ t: 'leave' }); this.party = null; this.inMatch = false; renderParty(); CG.room(null); },
   updateProfile() { if (this.party) this.send({ t: 'profile', profile: netProfile() }); },
@@ -1252,11 +1280,12 @@ const Net = {
       const prevLeader = this.party && this.party.leader;
       const prevIds = this.party ? this.party.members.map(x => x.id) : [];
       this.party = m.party;
-      if (this.inMatch && prevLeader && prevLeader !== m.party.leader) { this.inMatch = false; exitToLobby(true); lobbyToast('The host left the party'); }
+      if (this.inMatch && prevLeader && prevLeader !== m.party.leader) { const pub = m.party.pub; this.inMatch = false; exitToLobby(true); lobbyToast(pub ? 'The host left the match' : 'The host left the party'); if (pub) this.leave(); }
       if (this.hosting() && Game.mode) for (const a of Game.mode.actors) if (a.ctl === 'remote' && !m.party.members.some(x => x.id === a.p.mid)) a.ctl = 'bot';
       if (m.party.members.length > prevIds.length && prevIds.length) sfx('join');
       renderParty();
-    } else if (m.t === 'error') { lobbyToast(m.msg); }
+    } else if (m.t === 'start') { if (this.party && this.party.pub && this.isLeader()) startPublicShow(); }
+    else if (m.t === 'error') { lobbyToast(m.msg); }
     else if (m.t === 'relay') onRelay(m.from, m.d);
   },
   // --- per-frame networking ---
@@ -2800,7 +2829,7 @@ const MODE_DEFS = {
   turf: { name: 'Hex Paint', ico: 'm_turf', color: 'linear-gradient(135deg,#a06bff,#2fb5ff)', desc: 'Run over hex tiles to paint them your color. Jump to ground-pound a big splash!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 6, q: 3, cls: TurfMode, touch: ['JUMP', 'DASH'], goal: 'Top 3 by paint qualify' },
 };
 const MODE_IDS = Object.keys(MODE_DEFS);
-const SHOWS = [{ id: 'main', name: 'Main Show', ico: 'main', desc: '3 random rounds. Win the last one for a crown!', color: 'linear-gradient(135deg,#ff5fb7,#7a5cff)' }]
+const SHOWS = [{ id: 'main', name: 'Party Mix', ico: 'main', desc: '3 random games. Win the final for a trophy!', color: 'linear-gradient(135deg,#ff5fb7,#7a5cff)' }]
   .concat(MODE_IDS.map(id => ({ id, mode: id, name: MODE_DEFS[id].name, ico: MODE_DEFS[id].ico, desc: MODE_DEFS[id].goal, color: MODE_DEFS[id].color })));
 
 function botProfile(used) {
@@ -2912,32 +2941,46 @@ function finishRound(res, fromNet) {
   res.rank = res.rows.indexOf(myRow) + 1; res.qualified = !!(myRow && myRow.q);
   const final = Game.round >= Game.episode.length - 1;
   const crown = final && res.qualified && res.rank === 1 && Game.episode.length > 1;
-  const txt = crown ? 'CROWNED!' : res.qualified ? (res.rank === 1 ? '1ST PLACE!' : 'QUALIFIED!') : 'ELIMINATED';
+  const txt = crown ? 'CHAMPION!' : res.qualified ? (res.rank === 1 ? '1ST PLACE!' : 'QUALIFIED!') : 'ELIMINATED';
   $('#banner').innerHTML = `<div class="ol ${crown ? 'gold' : res.qualified ? 'good' : 'bad'}">${txt}</div>`; show('#banner');
   sfx(res.qualified ? 'win' : 'lose');
   const p = Game.mode && Game.mode.player;
   if (res.qualified && p && p.x != null) Particles.burst(p.x, (p.y || 0) + 1, p.z, [0xff4f8b, 0xffd21f, 0x3aa0ff, 0x3ddc84, 0xa06bff, 0xffffff], 90, 12, 0.13, 2.2, 9);
   if (res.qualified) CG.happytime();
   CG.gameplayStop();
-  const gain = res.qualified ? 100 + (res.rank === 1 ? 100 : 0) : 25;
-  if (!CONFIG.UNLIMITED_MONEY) save.coins += gain;
-  save.played++; save.xp += res.qualified ? 40 : 15;
-  if (crown) { save.crowns++; save.wins++; }
-  persist();
+  const R = grantRound(res, crown);
   show('#touch', false); show('#pauseBtn', false);
-  later(() => showResults(res, final, gain, crown), 2200);
+  later(() => showResults(res, final, R, crown), 2200);
 }
-function showResults(res, final, gain, crown) {
+function resultExtras(R) {
+  let h = '<div class="rlines">';
+  if (R.lvUp) h += `<div class="rline">${icon('star', 20)} LEVEL ${R.lvUp}! +${R.lvBonus} ${icon('coin', 16)}</div>`;
+  for (const q of R.quests) h += `<div class="rline">${icon('check', 18)} Quest done: ${questText(q)} +${q.r} ${icon('coin', 16)}</div>`;
+  h += '</div>';
+  const nu = nextUnlock();
+  if (nu) {
+    const can = save.coins >= nu.price;
+    h += `<div class="unlock"><div class="ut"><span>${can ? 'Ready to unlock' : 'Next unlock'}: ${esc(nu.nm)}</span><span>${Math.min(save.coins, nu.price)} / ${nu.price}</span></div><div class="ub"><i style="width:${Math.min(100, save.coins / nu.price * 100)}%"></i></div></div>`;
+  }
+  return h;
+}
+function showResults(res, final, R, crown) {
   show('#banner', false);
   const def = Game.def, party = !!Net.party, leader = !party || Net.isLeader();
   const canNext = !final && (party || res.qualified);
   const rows = res.rows.map((r, i) => `<div class="rrow ${r.p.mid === myMid() ? 'me' : ''}"><span class="rk">${i + 1}</span>${imgTag(Portrait.head(r.p), 'av')}<span class="nm">${esc(r.p.name)}${r.p.mid && r.p.mid !== 'local' && party ? ' ' + icon('users', 16) : ''}</span><span class="lb">${esc(r.label)}</span><span class="q ${r.q ? '' : 'x'}">${r.q ? icon('check', 16) : icon('x', 16)}</span></div>`).join('');
+  const pub = party && Net.party.pub;
   let btns;
-  if (leader) btns = (canNext ? `<button class="btn yellow" id="rNext">NEXT ROUND ${icon('play', 20)}</button>` : `<button class="btn yellow" id="rAgain">PLAY AGAIN</button>`) + `<button class="btn" id="rLobby">LOBBY</button>`;
+  if (pub) {
+    if (final) { Net.inMatch = false; btns = `<button class="btn yellow" id="rQuick">PLAY AGAIN</button><button class="btn" id="rLobbyP">LOBBY</button>`; }
+    else if (leader) btns = `<button class="btn yellow" id="rNext">NEXT ROUND <span id="rAuto">6</span></button>`;
+    else btns = `<div class="wait">Next round starting soon...</div><button class="btn" id="rLeave">LEAVE MATCH</button>`;
+  } else if (leader) btns = (canNext ? `<button class="btn yellow" id="rNext">NEXT ROUND ${icon('play', 20)}</button>` : `<button class="btn yellow" id="rAgain">PLAY AGAIN</button>`) + `<button class="btn" id="rLobby">LOBBY</button>`;
   else btns = `<div class="wait">Waiting for the party leader...</div><button class="btn" id="rLeave">LEAVE MATCH</button>`;
   $('#results').innerHTML = `<div class="card resultcard"><h2>${icon(def.ico, 40)} ${def.name}</h2><div class="sub">${res.qualified ? `You placed #${res.rank}!` : `You placed #${res.rank}`}</div>
     <div class="rlist">${rows}</div>
-    <div class="reward">${icon('coin', 24)} +${gain}${crown ? ` ${icon('crown', 24)} +1` : ''}</div>
+    <div class="reward">${icon('coin', 24)} +${R.gain}${R.online ? ' <small style="font-family:Fredoka;font-size:13px">(online +25%)</small>' : ''}${crown ? ` ${icon('trophy', 24)} +1` : ''}</div>
+    ${resultExtras(R)}
     <div class="rbtns">${btns}</div></div>`;
   show('#results');
   const nx = $('#rNext'), ag = $('#rAgain'), lb = $('#rLobby'), lv = $('#rLeave');
@@ -2945,10 +2988,15 @@ function showResults(res, final, gain, crown) {
   if (ag) ag.onclick = () => { sfx('click'); show('#results', false); CG.midgameAd(() => { clearWorld(); startShow(); }); };
   if (lb) lb.onclick = () => { sfx('click'); exitToLobby(); };
   if (lv) lv.onclick = () => { sfx('click'); Net.inMatch = false; exitToLobby(true); };
+  const rq = $('#rQuick'), rlp = $('#rLobbyP');
+  if (rq) rq.onclick = () => { sfx('click'); show('#results', false); if (Net.party) Net.leave(); CG.midgameAd(() => { exitToLobby(true); quickPlay(); }); };
+  if (rlp) rlp.onclick = () => { sfx('click'); if (Net.party) Net.leave(); exitToLobby(true); };
+  if (pub && nx) { let n = 6; const tk = () => { if (!$('#rAuto')) return; if (n <= 0) return nx.onclick(); $('#rAuto').textContent = n--; later(tk, 1000); }; tk(); }
 }
 function exitToLobby(fromNet) {
   if (Net.hosting() && !fromNet) Net.bcast({ k: 'lobby' });
   if (!fromNet || !Net.party) Net.inMatch = false;
+  if (Net.party && Net.party.pub) Net.leave();
   clearTimers(); clearWorld(); CG.gameplayStop();
   ['#hud', '#pauseBtn', '#touch', '#intro', '#count', '#banner', '#results', '#match', '#drawUI', '#pause'].forEach(s => show(s, false));
   show('#lobby'); Game.state = 'lobby'; Game.def = null; Game.paused = false;
@@ -3021,8 +3069,9 @@ function updateWallet() {
   $('#coinCount').textContent = CONFIG.UNLIMITED_MONEY ? '∞' : save.coins;
   $('#shopCoins').textContent = CONFIG.UNLIMITED_MONEY ? '∞' : save.coins;
   $('#pName').textContent = save.name;
-  const lv = Math.floor(save.xp / 100) + 1; $('#pLv').textContent = 'LV ' + lv; $('#pXp').style.width = (save.xp % 100) + '%';
-  $('#pStats').textContent = `${save.wins} crowns won · ${save.played} rounds`;
+  const L = levelInfo(); $('#pLv').textContent = 'LV ' + L.lv; $('#pXp').style.width = (L.cur / L.need * 100) + '%';
+  if (!$('#trophyIco').innerHTML) $('#trophyIco').innerHTML = icon('trophy', 30);
+  $('#pStats').textContent = `${save.wins} trophies · ${save.played} rounds`;
   const s = SHOWS.find(x => x.id === save.show) || SHOWS[0];
   $('#showIco').innerHTML = icon(s.ico, 46); $('#showName').textContent = s.name; $('#showDesc').textContent = s.desc; $('#showCard').style.background = s.color;
   $('#soundBtn').innerHTML = icon(Sound.muted ? 'mute' : 'sound', 26);
@@ -3030,11 +3079,12 @@ function updateWallet() {
 function setTab(tab) {
   lobbyTab = tab; sfx('click');
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  show('#home', tab === 'home'); show('#customPanel', tab === 'custom'); show('#showsPanel', tab === 'shows'); show('#shopPanel', tab === 'shop');
+  show('#home', tab === 'home'); show('#customPanel', tab === 'custom'); show('#showsPanel', tab === 'shows'); show('#shopPanel', tab === 'shop'); show('#questsPanel', tab === 'quests');
+  if (tab === 'quests') renderQuests();
   if (tab === 'custom') renderCustom(); if (tab === 'shows') renderShows(); if (tab === 'shop') renderShop();
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
-$('#playBtn').onclick = () => startShow();
+$('#playBtn').onclick = () => quickPlay();
 $('#showCard').onclick = () => setTab('shows');
 $('#soundBtn').onclick = () => { Sound.unlock(); Sound.setMuted(!Sound.muted); updateWallet(); sfx('click'); };
 $('#nameInput').value = save.name;
@@ -3087,8 +3137,135 @@ function renderShows() {
   $('#showGrid').onclick = e => { const el = e.target.closest('.show'); if (!el) return; save.show = el.dataset.id; persist(); updateWallet(); renderShows(); sfx('click'); };
 }
 
+
+// =====================================================================
+//  PROGRESSION: coins, levels, daily gift, daily quests
+// =====================================================================
+const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
+const DAILY_GIFTS = [100, 150, 200, 250, 300, 400, 600];
+function levelInfo(xp = save.xp) { let lv = 1, need = 100; while (xp >= need) { xp -= need; lv++; need = 100 + (lv - 1) * 25; } return { lv, cur: xp, need }; }
+const QUEST_POOL = [
+  { id: 'play', txt: n => `Play ${n} rounds`, n: [3, 5], r: 100 },
+  { id: 'qual', txt: n => `Qualify ${n} times`, n: [2, 3], r: 120 },
+  { id: 'first', txt: () => 'Finish a round in 1st place', n: [1], r: 150 },
+  { id: 'online', txt: n => `Play ${n} online rounds`, n: [2, 3], r: 150 },
+  { id: 'champ', txt: () => 'Win a Party Mix final', n: [1], r: 250 },
+  { id: 'mode', txt: (n, m) => `Play ${MODE_DEFS[m].name} ${n} times`, n: [2], r: 100, mode: true },
+];
+function ensureQuests() {
+  if (save.quests && save.quests.day === dayKey()) return;
+  save.quests = { day: dayKey(), list: shuffle(QUEST_POOL.slice()).slice(0, 3).map(q => ({ id: q.id, need: pick(q.n), have: 0, r: q.r, m: q.mode ? pick(MODE_IDS.filter(x => x !== 'draw')) : null, done: false })) };
+  persist();
+}
+const questText = q => QUEST_POOL.find(x => x.id === q.id).txt(q.need, q.m);
+function bumpQuests(ev) {
+  ensureQuests(); const out = [];
+  for (const q of save.quests.list) {
+    if (q.done) continue;
+    const inc = q.id === 'play' || (q.id === 'qual' && ev.qualified) || (q.id === 'first' && ev.rank === 1) || (q.id === 'online' && ev.online) || (q.id === 'champ' && ev.crown) || (q.id === 'mode' && ev.mode === q.m);
+    if (!inc) continue;
+    q.have = Math.min(q.need, q.have + 1);
+    if (q.have >= q.need) { q.done = true; save.coins += q.r; out.push(q); }
+  }
+  return out;
+}
+function dailyState() {
+  const d = save.daily || { last: null, streak: 0 }, ready = d.last !== dayKey();
+  const day = ready ? (d.last === dayKey(Date.now() - 864e5) ? d.streak % 7 + 1 : 1) : d.streak;
+  return { ready, day };
+}
+function claimDaily() {
+  const s = dailyState(); if (!s.ready) return 0;
+  const amt = DAILY_GIFTS[s.day - 1]; save.daily = { last: dayKey(), streak: s.day }; save.coins += amt; persist(); return amt;
+}
+function nextUnlock() {
+  const all = [];
+  for (const k of ANIMAL_IDS) all.push({ id: 'animal:' + k, nm: ANIMALS[k].name, pic: () => Portrait.animal(k) });
+  for (const [cat, list] of [['hat', HATS], ['face', FACES], ['back', BACKS]]) for (const x of list) if (x.id !== 'none') all.push({ id: cat + ':' + x.id, nm: x.name, pic: () => Portrait.item(cat, x.id) });
+  const left = all.filter(it => !owns(it.id)).map(it => Object.assign(it, { price: priceOf(it.id) })).sort((a, b) => a.price - b.price);
+  return left.find(it => it.price > save.coins) || left[left.length - 1] || null;
+}
+function grantRound(res, crown) {
+  const online = !!Net.party;
+  let gain = res.qualified ? 60 + (res.rank === 1 ? 40 : 0) : 20;
+  if (crown) gain += 250;
+  if (online) gain = Math.round(gain * 1.25);
+  const lv0 = levelInfo().lv;
+  save.coins += gain; save.played++; save.xp += (res.qualified ? 40 : 15) + (crown ? 100 : 0);
+  if (crown) { save.crowns++; save.wins++; }
+  const lv1 = levelInfo().lv; let lvBonus = 0;
+  for (let l = lv0 + 1; l <= lv1; l++) lvBonus += 50 + l * 25;
+  save.coins += lvBonus;
+  const quests = bumpQuests({ qualified: res.qualified, rank: res.rank, online, crown, mode: Game.def && Game.def.id });
+  persist();
+  return { gain, online, lvUp: lv1 > lv0 ? lv1 : 0, lvBonus, quests };
+}
+function renderQuests() {
+  ensureQuests();
+  const st = dailyState(), d = save.daily || { streak: 0 };
+  $('#giftDays').innerHTML = DAILY_GIFTS.map((a, i) => { const n = i + 1, got = st.ready ? n < st.day : n <= st.day, now = st.ready && n === st.day; return `<div class="gday ${got ? 'got' : ''} ${now ? 'now' : ''}">DAY ${n}<b>${a}</b></div>`; }).join('');
+  $('#giftBtn').disabled = !st.ready; $('#giftBtn').innerHTML = st.ready ? `${icon('coin', 22)} CLAIM ${DAILY_GIFTS[st.day - 1]}` : 'COME BACK TOMORROW';
+  $('#giftSub').textContent = st.ready ? 'ready!' : `streak: ${d.streak} day${d.streak === 1 ? '' : 's'}`;
+  $('#questList').innerHTML = save.quests.list.map(q => `<div class="quest ${q.done ? 'done' : ''}">${q.done ? icon('check', 26) : icon('star', 26)}<div class="qt">${questText(q)}<div class="qb"><i style="width:${q.have / q.need * 100}%"></i></div></div><div class="qr">${icon('coin', 18)}${q.r}</div></div>`).join('');
+}
+function updateQuestDot() { ensureQuests(); show('#questDot', dailyState().ready); }
+$('#giftBtn').onclick = () => { const a = claimDaily(); if (!a) return; sfx('coin'); sfx('win', 0.5); lobbyToast(`+${a} coins!`); updateWallet(); renderQuests(); updateQuestDot(); if (lobbyBean) lobbyBean.hop(); };
+
+// =====================================================================
+//  QUICK PLAY (online matchmaking with strangers; bots fill empty seats)
+// =====================================================================
+const QP = { want: false, startAt: 0, offlineT: null, tick: null };
+function quickPlay() {
+  if (Net.party && !Net.party.pub) return startShow();
+  const s = SHOWS.find(x => x.id === save.show) || SHOWS[0];
+  if (s.mode === 'draw') return startShow();   // drawing rounds stay private (user-made drawings)
+  QP.want = true; Game.state = 'match'; show('#lobby', false); show('#match'); show('#matchCancel');
+  $('#matchTitle').textContent = 'FINDING PLAYERS'; $('#matchCount').textContent = '1';
+  $('#matchBeans').innerHTML = imgTag(Portrait.head(netProfile()), 'av'); $('#matchSub').textContent = 'Connecting...';
+  clearTimeout(QP.offlineT);
+  QP.offlineT = setTimeout(() => { if (QP.want && !(Net.party && Net.party.pub)) { QP.want = false; playOffline(); } }, 6000);
+  Net.quick().catch(() => { if (QP.want) { QP.want = false; clearTimeout(QP.offlineT); playOffline(); } });
+}
+function playOffline() { show('#matchCancel', false); $('#matchSub').textContent = ''; Game.state = 'lobby'; startShow(); }
+function cancelQuick() {
+  QP.want = false; clearTimeout(QP.offlineT); clearInterval(QP.tick);
+  if (Net.party && Net.party.pub) Net.leave();
+  show('#match', false); show('#lobby'); Game.state = 'lobby'; sfx('click');
+}
+$('#matchCancel').onclick = cancelQuick;
+function updateQuickRoom() {
+  const P = Net.party;
+  if (!P || !P.pub || Net.inMatch || Game.state !== 'match') return;
+  clearTimeout(QP.offlineT);
+  if (P.startIn != null) QP.startAt = Date.now() + P.startIn;
+  $('#matchTitle').textContent = P.members.length > 1 ? 'PLAYERS FOUND!' : 'FINDING PLAYERS';
+  $('#matchCount').textContent = `${P.members.length} / 6`;
+  $('#matchBeans').innerHTML = P.members.map(m => `<span>${imgTag(Portrait.head(m.profile), 'av')}</span>`).join('');
+  show('#matchCancel', !P.inMatch);
+  clearInterval(QP.tick);
+  QP.tick = setInterval(() => {
+    if (!Net.party || !Net.party.pub || Game.state !== 'match') return clearInterval(QP.tick);
+    const s = Math.max(0, Math.ceil((QP.startAt - Date.now()) / 1000));
+    $('#matchSub').textContent = Net.party.inMatch || !s ? 'Starting!' : `Starting in ${s}... (bots fill empty seats)`;
+  }, 200);
+}
+function startPublicShow() {
+  QP.want = false; clearTimeout(QP.offlineT); clearInterval(QP.tick);
+  const id = Net.party.show;
+  Game.episode = id && MODE_DEFS[id] && id !== 'draw' ? [id] : shuffle(MODE_IDS.filter(x => x !== 'draw')).slice(0, 3);
+  Game.round = 0; Net.inMatch = true; startRound();
+}
+async function refreshOnline() {
+  try {
+    const u = Net.url(); if (!u) return;
+    const r = await fetch(u.replace(/^ws/, 'http') + '/stats', { cache: 'no-store' }); const j = await r.json();
+    const el = $('#onlineNow'); show('#onlineNow', j.online >= 5); el.querySelector('span').textContent = `${j.online} playing now`;
+  } catch (e) { }
+}
+
 // ---------- party panel ----------
 function renderParty() {
+  if (Net.party && Net.party.pub) { updateQuickRoom(); return; }
   const P = Net.party, slots = $('#partySlots');
   const members = P ? P.members : [{ id: 'local', profile: netProfile() }];
   let h = '';
@@ -3167,6 +3344,8 @@ function loop(now) {
   requestAnimationFrame(loop);
   CG.loadingStop();
   show('#loading', false);
+  updateQuestDot(); if (dailyState().ready && save.played > 0) setTimeout(() => lobbyToast('Daily gift ready! Open QUESTS'), 1200);
+  refreshOnline(); setInterval(() => { if (Game.state === 'lobby') refreshOnline(); }, 30000);
   window.onCGJoin = code => { if (Net.party && Net.party.code === code) return; if (Net.party) Net.leave(); doJoin(code); };
   const inv = CG.invite || new URLSearchParams(location.search).get('party');
   if (inv) doJoin(inv);
