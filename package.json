@@ -5,8 +5,8 @@
   "description": "ANIMAL PARTY.io - io party game collection with 5-player parties",
   "main": "server.js",
   "scripts": {
-    "postinstall": "node scripts/fetch-three.mjs",
-    "build": "node scripts/fetch-three.mjs",
+    "postinstall": "node scripts/fetch-three.mjs && node scripts/build-cg.mjs",
+    "build": "node scripts/fetch-three.mjs && node scripts/build-cg.mjs",
     "start": "node server.js"
   },
   "engines": { "node": ">=18" },
