@@ -9,6 +9,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const files = [['index.html', join(root, 'index.html')]];
 if (existsSync(join(root, 'lib', 'three.module.js'))) files.push(['lib/three.module.js', join(root, 'lib', 'three.module.js')]);
 else console.warn('build-cg: lib/three.module.js missing - the zip will fall back to the CDN');
+const fd = join(root, 'fonts');
+if (existsSync(fd)) for (const f of readdirSync(fd)) if (/\.(woff2|css)$/i.test(f)) files.push(['fonts/' + f, join(fd, f)]);
 const sd = join(root, 'sounds');
 if (existsSync(sd)) for (const f of readdirSync(sd)) if (/\.(mp3|ogg|wav)$/i.test(f)) files.push(['sounds/' + f, join(sd, f)]);
 
