@@ -20,11 +20,11 @@ const beans = SPOTS.map((s, i) => {
 });
 
 const LAYOUTS = {
-  landscape: { W: 1920, H: 1080, fov: 34, cam: [0, 1.75, 9.6], look: [0, 1.25, -0.4], title: { y: 0.15, size: 190, rot: -3 } },
-  portrait: { W: 800, H: 1200, fov: 50, cam: [0, 1.6, 9.8], look: [0, 0.6, -0.4], title: { y: 0.13, size: 118, rot: -4, split: true } },
-  square: { W: 800, H: 800, fov: 44, cam: [0, 1.7, 9.3], look: [0, 0.95, -0.4], title: { y: 0.14, size: 104, rot: -3, split: true } },
-  vlandscape: { W: 1920, H: 1080, fov: 34, cam: [0, 1.75, 9.6], look: [0, 1.25, -0.4], title: { y: 0.15, size: 190, rot: -3 } },
-  vportrait: { W: 1080, H: 1620, fov: 50, cam: [0, 1.6, 9.8], look: [0, 0.6, -0.4], title: { y: 0.13, size: 160, rot: -4, split: true } },
+  landscape: { W: 1920, H: 1080, fov: 34, cam: [0, 1.8, 8.6], look: [0, 1.4, -0.4], title: { y: 0.15, size: 190, rot: -3 } },
+  portrait: { W: 800, H: 1200, fov: 50, cam: [0, 1.9, 7.2], look: [0, 1.6, -0.4], title: { y: 0.13, size: 118, rot: -4, split: true } },
+  square: { W: 800, H: 800, fov: 44, cam: [0, 1.85, 7.6], look: [0, 1.35, -0.4], title: { y: 0.14, size: 104, rot: -3, split: true } },
+  vlandscape: { W: 1920, H: 1080, fov: 34, cam: [0, 1.8, 8.6], look: [0, 1.4, -0.4], title: { y: 0.15, size: 190, rot: -3 } },
+  vportrait: { W: 1080, H: 1620, fov: 50, cam: [0, 1.9, 7.2], look: [0, 1.6, -0.4], title: { y: 0.13, size: 160, rot: -4, split: true } },
 };
 
 function drawTitle(g, L, W, H, pulse = 1) {
