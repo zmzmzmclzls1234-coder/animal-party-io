@@ -12,7 +12,7 @@
 <style>
 :root{--ink:#1b0f3a;--pink:#ff4fa0;--yellow:#ffd21f;--blue:#3aa0ff;--purple:#6b3cff;--green:#3ddc84;--red:#ff4b5c;--line:4px solid var(--ink);--drop:0 6px 0 var(--ink)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;overflow:hidden;background:#5a4bff;font-family:'Fredoka',system-ui,sans-serif;font-weight:700;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#5a4bff;font-family:'Fredoka',system-ui,sans-serif;font-weight:700;color:#fff;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;-webkit-touch-callout:none;touch-action:none}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block}
 #ui{position:fixed;inset:0;pointer-events:none;z-index:2}
 .screen{position:absolute;inset:0}
@@ -143,6 +143,12 @@ input.field{pointer-events:auto;font-family:'Titan One',sans-serif;font-size:20p
 #rotate .ico{animation:rot 1.6s ease-in-out infinite}
 @keyframes rot{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
 @media (orientation:portrait) and (pointer:coarse){#rotate{display:grid}}
+html.cg #rotate{display:none!important}
+body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:auto!important;background:#2a1c5a}
+#adwait{position:fixed;inset:0;z-index:60;background:rgba(27,15,58,.55);display:grid;place-items:center}
+#adwait.hidden{display:none}
+#adwait .sp{width:64px;height:64px;border:8px solid #fff;border-top-color:transparent;border-radius:50%;animation:adsp .8s linear infinite}
+@keyframes adsp{to{transform:rotate(360deg)}}
 
 /* ---------- HUD (minimal) ---------- */
 #hud{position:absolute;inset:0;pointer-events:none}
@@ -301,6 +307,7 @@ input.field{pointer-events:auto;font-family:'Titan One',sans-serif;font-size:20p
   <div id="pause" class="overlay hidden"><div class="card"><h2>PAUSED</h2><button class="btn yellow" id="pResume">RESUME</button><button class="btn" id="pSound"></button><button class="btn pink" id="pQuit">QUIT TO LOBBY</button></div></div>
 </div>
 <div id="loading" class="ol">LOADING...</div>
+<div id="adwait" class="hidden"><div class="sp"></div></div>
 <div id="rotate"><div><svg class="ico" viewBox="0 0 64 64" width="120" height="120"><rect x="18" y="6" width="28" height="48" rx="6" fill="#fff" stroke="#1b0f3a" stroke-width="5"/></svg><div class="ol" style="margin-top:20px">Rotate your device<br>to landscape!</div></div></div>
 <script type="module">
 /* =====================================================================
@@ -316,7 +323,7 @@ const CONFIG = {
   UNLIMITED_MONEY: true,   // infinite coins (dev)
   UNLOCK_ALL: true,        // every animal & accessory unlocked (dev)
   START_COINS: 500,
-  SERVER_URL: '',          // '' = same host as the page. On CrazyGames set e.g. 'wss://animal-party.onrender.com'
+  SERVER_URL: 'wss://animal-party-io.onrender.com', // party server (used when the page is not served by it, e.g. on CrazyGames)
   PARTY_MAX: 5,
   SOUND_FILES: false,      // true = load sounds/<name>.mp3 when present (falls back to synth)
 };
@@ -843,7 +850,7 @@ const icon = (n, s = 28, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 64 6
 // ======= AUDIO (layered synth, optional sample files) =======
 const SFX_NAMES = ['click', 'jump', 'land', 'dash', 'hit', 'pop', 'coin', 'eat', 'boom', 'shoot', 'splat', 'tick', 'go', 'win', 'lose', 'item', 'boost', 'error', 'whoosh', 'join'];
 const Sound = {
-  ctx: null, master: null, muted: !!save.muted, adMuted: false, buffers: {}, noise: null,
+  ctx: null, master: null, muted: !!save.muted, adMuted: false, sdkMuted: false, buffers: {}, noise: null,
   init() {
     if (this.ctx) return;
     try {
@@ -856,8 +863,8 @@ const Sound = {
       if (CONFIG.SOUND_FILES) for (const nm of SFX_NAMES) fetch(`sounds/${nm}.mp3`).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && this.ctx.decodeAudioData(b)).then(buf => { if (buf) this.buffers[nm] = buf; }).catch(() => { });
     } catch (e) { this.ctx = null; }
   },
-  unlock() { this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
-  applyVol() { if (this.master) this.master.gain.value = (this.muted || this.adMuted) ? 0 : 0.65; },
+  unlock() { this.init(); if (this.ctx && this.ctx.state !== 'running') this.ctx.resume().catch(() => { }); },
+  applyVol() { if (this.master) this.master.gain.value = (this.muted || this.adMuted || this.sdkMuted) ? 0 : 0.65; },
   setMuted(m) { this.muted = m; save.muted = m; persist(); this.applyVol(); },
   osc(type, f0, f1, dur, vol, delay = 0, out) {
     const c = this.ctx, t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
@@ -873,7 +880,7 @@ const Sound = {
     s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   },
   play(name, vol = 1, pitch = 1) {
-    if (!this.ctx || this.muted || this.adMuted) return;
+    if (!this.ctx || this.muted || this.adMuted || this.sdkMuted) return;
     try {
       const out = this.ctx.createGain(); out.gain.value = vol; out.connect(this.master);
       if (this.buffers[name]) { const s = this.ctx.createBufferSource(); s.buffer = this.buffers[name]; s.playbackRate.value = pitch * rand(0.96, 1.04); s.connect(out); s.start(); return; }
@@ -906,6 +913,9 @@ const Sound = {
 const sfx = (n, v, p) => Sound.play(n, v, p);
 addEventListener('pointerdown', () => Sound.unlock(), { capture: true });
 addEventListener('keydown', () => Sound.unlock(), { capture: true });
+addEventListener('touchend', () => Sound.unlock(), { capture: true });
+addEventListener('click', () => Sound.unlock(), { capture: true });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) Sound.unlock(); });
 
 // ======= INPUT =======
 const Input = { keys: new Set(), pressed: new Set(), nx: 0, ny: 0, mdown: false, mclick: false, joy: { x: 0, y: 0, active: false }, btnA: false, btnB: false, aPressed: false, bPressed: false, touch: matchMedia('(pointer:coarse)').matches };
@@ -1142,13 +1152,21 @@ function shakeFor(a, amt) { if (!a) return; if (a.isPlayer) CamFX.shake = Math.m
 
 // ======= CrazyGames SDK v3 wrapper (safe when SDK is missing) =======
 const CG = {
-  sdk: null, env: 'none', inGameplay: false,
+  sdk: null, env: 'none', inGameplay: false, chatOff: false, instant: false, invite: null, lastRoom: '',
   async init() {
     try {
       if (window.CrazyGames && window.CrazyGames.SDK) {
         await window.CrazyGames.SDK.init(); this.sdk = window.CrazyGames.SDK; this.env = this.sdk.environment;
         if (this.env === 'disabled') { this.sdk = null; return; }
-        try { const s = this.sdk.game.settings; if (s && s.muteAudio) Sound.adMuted = true; Sound.applyVol(); this.sdk.game.addSettingsChangeListener(ns => { Sound.adMuted = !!ns.muteAudio; Sound.applyVol(); }); } catch (e) { }
+        document.documentElement.classList.add('cg');
+        // device type from the SDK (not touch detection)
+        try { const t = this.sdk.user.systemInfo.device.type; if (t) Input.touch = (t === 'mobile' || t === 'tablet'); } catch (e) { }
+        // settings: muteAudio overrides our own sound toggle, disableChat hides player-typed text
+        const applyS = s => { if (!s) return; Sound.sdkMuted = !!s.muteAudio; this.chatOff = !!s.disableChat; Sound.applyVol(); };
+        try { applyS(this.sdk.game.settings); this.sdk.game.addSettingsChangeListener(applyS); } catch (e) { }
+        try { this.instant = !!this.sdk.game.isInstantMultiplayer; } catch (e) { }
+        try { const ip = this.sdk.game.inviteParams; this.invite = (ip && (ip.roomId || ip.party)) || this.sdk.game.getInviteParam('roomId') || null; } catch (e) { }
+        try { this.sdk.game.addJoinRoomListener(p => { const c = p && (p.roomId || p.party); if (c && window.onCGJoin) window.onCGJoin(String(c)); }); } catch (e) { }
         try { const u = await this.sdk.user.getUser(); if (u && u.username && /^Player\d+$/.test(save.name)) { save.name = u.username.slice(0, 12); persist(); } } catch (e) { }
       }
     } catch (e) { this.sdk = null; }
@@ -1159,16 +1177,37 @@ const CG = {
   gameplayStart() { if (this.inGameplay) return; this.inGameplay = true; this.call(s => s.game.gameplayStart()); },
   gameplayStop() { if (!this.inGameplay) return; this.inGameplay = false; this.call(s => s.game.gameplayStop()); },
   happytime() { this.call(s => s.game.happytime()); },
-  inviteParam() { try { return this.sdk ? this.sdk.game.getInviteParam('roomId') : null; } catch (e) { return null; } },
-  showInvite(code) { this.call(s => s.game.showInviteButton({ roomId: code })); },
-  hideInvite() { this.call(s => s.game.hideInviteButton()); },
+  // Room data: lets friends join from the CrazyGames UI
+  room(party, inMatch) {
+    if (!this.sdk) return;
+    const g = this.sdk.game;
+    if (!party) { if (this.lastRoom) { this.lastRoom = ''; this.call(() => { if (g.leftRoom) g.leftRoom(); else g.hideInviteButton(); }); } return; }
+    const joinable = party.members.length < 5 && !inMatch;
+    const key = party.code + '|' + joinable; if (key === this.lastRoom) return; this.lastRoom = key;
+    this.call(() => {
+      if (g.updateRoom) g.updateRoom({ roomId: 'animalparty-' + party.code, isJoinable: joinable, inviteParams: { roomId: party.code } });
+      else if (joinable) g.showInviteButton({ roomId: party.code }); else g.hideInviteButton();
+    });
+  },
+  inviteLink(code) { try { return this.sdk && this.sdk.game.inviteLink ? this.sdk.game.inviteLink({ roomId: code }) : null; } catch (e) { return null; } },
   midgameAd(done) {
     if (!this.sdk) return done();
-    let fin = false; const end = () => { if (fin) return; fin = true; Sound.adMuted = false; Sound.applyVol(); done(); };
+    const blk = document.getElementById('adwait'); if (blk) blk.classList.remove('hidden');
+    let fin = false; const end = () => { if (fin) return; fin = true; Sound.adMuted = false; Sound.applyVol(); if (blk) blk.classList.add('hidden'); done(); };
     try { this.sdk.ad.requestAd('midgame', { adStarted: () => { Sound.adMuted = true; Sound.applyVol(); }, adFinished: end, adError: end }); } catch (e) { end(); }
     setTimeout(end, 45000);
   },
 };
+// tiny profanity filter for typed text (Doodle Guess)
+const BADW = ['fuck','shit','bitch','cunt','dick','cock','pussy','asshole','bastard','slut','whore','fag','faggot','nigger','nigga','retard','rape','porn','penis','vagina','boob','tits','sex','nazi','kys','damn','piss','wank','twat','dildo','cum','anal','hitler','kill yourself'];
+function cleanText(t) {
+  const flat = String(t).toLowerCase().replace(/[@4]/g, 'a').replace(/3/g, 'e').replace(/[1!|]/g, 'i').replace(/0/g, 'o').replace(/[5$]/g, 's').replace(/7/g, 't');
+  const squash = flat.replace(/[^a-z]/g, '');
+  for (const w of BADW) {
+    if (squash === w || (w.length <= 4 ? new RegExp('(^|[^a-z])' + w + '($|[^a-z])').test(flat) : squash.includes(w.replace(/ /g, '')))) return '***';
+  }
+  return String(t);
+}
 
 
 // =====================================================================
@@ -1178,9 +1217,9 @@ const netProfile = () => ({ name: save.name, animal: save.animal, color: save.co
 const Net = {
   ws: null, id: null, party: null, inMatch: false, inputs: {}, fxq: [], pend: null, sendT: 0, snapT: 0, keyT: 0, connecting: false,
   url() {
-    if (CONFIG.SERVER_URL) return CONFIG.SERVER_URL;
-    if (location.protocol === 'https:' || location.protocol === 'http:') return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
-    return null;
+    const h = location.hostname, own = /onrender\.com$|^localhost$|^127\.0\.0\.1$/.test(h);
+    if (own && (location.protocol === 'https:' || location.protocol === 'http:')) return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+    return CONFIG.SERVER_URL || null;
   },
   connect() {
     return new Promise((res, rej) => {
@@ -1198,7 +1237,7 @@ const Net = {
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
   async create() { await this.connect(); this.send({ t: 'create', profile: netProfile() }); },
   async join(code) { await this.connect(); this.send({ t: 'join', code: String(code).toUpperCase().replace(/[^A-Z0-9]/g, ''), profile: netProfile() }); },
-  leave() { this.send({ t: 'leave' }); this.party = null; this.inMatch = false; renderParty(); CG.hideInvite(); },
+  leave() { this.send({ t: 'leave' }); this.party = null; this.inMatch = false; renderParty(); CG.room(null); },
   updateProfile() { if (this.party) this.send({ t: 'profile', profile: netProfile() }); },
   isLeader() { return !!this.party && this.party.leader === this.id; },
   hosting() { return !!this.party && this.inMatch && this.isLeader(); },
@@ -2593,8 +2632,8 @@ class DrawMode extends BaseMode {
   canDraw() { return this.phase === 'draw' && this.drawer && this.drawer.isPlayer; }
   clearCanvas() { this.g.fillStyle = '#fff'; this.g.fillRect(0, 0, 800, 560); }
   drawSeg(s) { const g = this.g; g.strokeStyle = s[4]; g.lineWidth = s[5]; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(s[0], s[1]); g.lineTo(s[2], s[3]); g.stroke(); }
-  log(html, cls = '') { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; const L = $('#dLog'); if (!L) return; L.appendChild(d); while (L.children.length > 80) L.firstChild.remove(); L.scrollTop = L.scrollHeight; }
-  chat(html, cls = '') { this.log(html, cls); if (Net.hosting()) Net.bcast({ k: 'chat', h: html, c: cls }); }
+  log(html, cls = '', mid) { if (cls === 'u' && CG.chatOff && mid !== myMid()) return; const d = document.createElement('div'); d.className = cls; d.innerHTML = html; const L = $('#dLog'); if (!L) return; L.appendChild(d); while (L.children.length > 80) L.firstChild.remove(); L.scrollTop = L.scrollHeight; }
+  chat(html, cls = '', mid) { this.log(html, cls, mid); if (Net.hosting()) Net.bcast({ k: 'chat', h: html, c: cls, m: mid }); }
   renderPlayers() {
     const el = $('#dPlayers'); if (!el) return;
     el.innerHTML = this.actors.slice().sort((a, b) => b.pts - a.pts).map(a => `<div class="dp ${a === this.drawer ? 'drawer' : ''} ${a.guessed ? 'ok' : ''} ${a.isPlayer ? 'me' : ''}">${imgTag(Portrait.head(a.p), 'av')}<span class="nm">${esc(a.p.name)}</span>${a === this.drawer ? icon('m_draw', 18) : ''}<span class="sc">${a.pts}</span></div>`).join('');
@@ -2654,13 +2693,14 @@ class DrawMode extends BaseMode {
   }
   say(a, text) {
     if (!a) return;
+    text = String(text).slice(0, 24);
     if (this.phase === 'draw' && a !== this.drawer && !a.guessed) {
       if (norm(text) === norm(this.word)) { this.correct(a); return; }
       const w = norm(this.word), t = norm(text);
       if (w.length > 2 && t.length === w.length && [...w].filter((c, i) => c === t[i]).length === w.length - 1) { if (a.isPlayer) this.log('So close!', 'sys'); else Net.toMember(a.p.mid, { k: 'chat', h: 'So close!', c: 'sys' }); }
     }
     if (a === this.drawer && this.phase === 'draw' && norm(text).includes(norm(this.word))) return;
-    this.chat(`<b>${esc(a.p.name)}</b>: ${esc(text)}`);
+    this.chat(`<b>${esc(a.p.name)}</b>: ${esc(cleanText(text))}`, 'u', a.p.mid);
   }
   botChatter() {
     const cands = this.actors.filter(a => a.ctl === 'bot' && a !== this.drawer && !a.guessed);
@@ -2686,7 +2726,7 @@ class DrawMode extends BaseMode {
     } else {
       if (d.k === 'lns') for (const s of d.l) this.drawSeg(s);
       else if (d.k === 'clr') this.clearCanvas();
-      else if (d.k === 'chat') this.log(d.h, d.c);
+      else if (d.k === 'chat') this.log(d.h, d.c, d.m);
       else if (d.k === 'choose') { this.myWord = null; this.showChoose(d.opts); }
       else if (d.k === 'word') { this.myWord = d.w; this.setWordLine(); }
     }
@@ -2901,7 +2941,7 @@ function showResults(res, final, gain, crown) {
     <div class="rbtns">${btns}</div></div>`;
   show('#results');
   const nx = $('#rNext'), ag = $('#rAgain'), lb = $('#rLobby'), lv = $('#rLeave');
-  if (nx) nx.onclick = () => { sfx('click'); Game.round++; show('#results', false); startRound(); };
+  if (nx) nx.onclick = () => { sfx('click'); Game.round++; show('#results', false); const go = () => startRound(); if (!party) CG.midgameAd(go); else go(); };
   if (ag) ag.onclick = () => { sfx('click'); show('#results', false); CG.midgameAd(() => { clearWorld(); startShow(); }); };
   if (lb) lb.onclick = () => { sfx('click'); exitToLobby(); };
   if (lv) lv.onclick = () => { sfx('click'); Net.inMatch = false; exitToLobby(true); };
@@ -2915,8 +2955,7 @@ function exitToLobby(fromNet) {
   scene.background = BG_LOBBY; lobbyRoot.visible = true;
   refreshLobbyBean(); updateWallet(); renderParty();
   camera.position.set(0, 2.2, 7.2); camLook.set(0, 1.1, 0);
-  if (!fromNet && !Net.party && save.played > 0 && save.played % 2 === 0) CG.midgameAd(() => { });
-}
+  }
 function togglePause(force) {
   if (Game.state === 'lobby') return;
   const on = force != null ? force : $('#pause').classList.contains('hidden');
@@ -3082,7 +3121,7 @@ async function doJoin(code) {
 $('#btnJoin').onclick = () => doJoin($('#codeInput').value);
 $('#codeInput').onkeydown = e => { if (e.key === 'Enter') doJoin($('#codeInput').value); };
 $('#btnLeave').onclick = () => { sfx('click'); Net.leave(); refreshLobbyBean(); };
-$('#btnCopy').onclick = () => { try { navigator.clipboard.writeText(Net.party.code); lobbyToast('Party code copied!'); sfx('pop'); } catch (e) { } };
+$('#btnCopy').onclick = () => { try { const l = CG.inviteLink(Net.party.code); navigator.clipboard.writeText(l || Net.party.code); lobbyToast(l ? 'Invite link copied!' : 'Party code copied!'); sfx('pop'); } catch (e) { } };
 
 // =====================================================================
 //  MAIN LOOP
@@ -3115,19 +3154,28 @@ function loop(now) {
   await CG.init();
   CG.loadingStart();
   Particles.init(); FX.init(); Portrait.init();
+  if (/[?&]covers\b/.test(location.search)) {   // cover / trailer generator (not used in the game itself)
+    buildLobby(); if (lobbyBean) lobbyBean.root.visible = false;
+    window.AP = { THREE, renderer, scene, camera, lobbyRoot, makeBean, Particles, floaters, sun, ANIMAL_IDS };
+    show('#loading', false); document.body.classList.add('covermode');
+    import('./covers.js').catch(e => console.error(e)); return;
+  }
   $('#pauseBtn').innerHTML = icon('pause', 28); $('#btnCopy').innerHTML = icon('copy', 26); $('#partyTitleIco').innerHTML = icon('users', 28);
-  addEventListener('pointerdown', () => { try { if (Input.touch && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } }, { once: true });
+  addEventListener('pointerdown', () => { try { if (!CG.sdk && Input.touch && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } }, { once: true });
   buildLobby(); updateWallet(); renderParty();
   if (!CONFIG.UNLOCK_ALL) show('#unlockNote', false);
   requestAnimationFrame(loop);
   CG.loadingStop();
   show('#loading', false);
-  const inv = CG.inviteParam() || new URLSearchParams(location.search).get('party');
+  window.onCGJoin = code => { if (Net.party && Net.party.code === code) return; if (Net.party) Net.leave(); doJoin(code); };
+  const inv = CG.invite || new URLSearchParams(location.search).get('party');
   if (inv) doJoin(inv);
+  else if (CG.instant) $('#btnCreate').onclick();   // Instant Multiplayer: start a private party right away
 })();
 // party created -> CrazyGames invite button
 const _netOnMsg = Net.onMsg.bind(Net);
-Net.onMsg = function (m) { _netOnMsg(m); if (m.t === 'party' && m.party) CG.showInvite(m.party.code); };
+Net.onMsg = function (m) { _netOnMsg(m); if (m.t === 'party' && m.party) CG.room(m.party, Net.inMatch); };
+setInterval(() => CG.room(Net.party, Net.inMatch), 1000);
 window.ANIMAL_PARTY = { Game, MODE_DEFS, startShow, finishRound, exitToLobby, CONFIG, save, Net };
 
 </script>
