@@ -15,6 +15,7 @@ const server = http.createServer((req, res) => {
   let u = '/';
   try { u = decodeURIComponent((req.url || '/').split('?')[0]); } catch (e) { }
   if (u === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('ok'); }
+  if (u === '/stats') { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); return res.end(JSON.stringify({ online: clients.size, rooms: parties.size })); }
   if (u === '/stats') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ clients: clients.size, parties: parties.size })); }
   if (u.endsWith('/')) u += 'index.html';
   const file = path.normalize(path.join(PUB, u));
@@ -100,7 +101,29 @@ function cleanProfile(p) {
   p = p || {};
   return { name: str(p.name, 12, 'Player'), animal: ANIMALS.includes(p.animal) ? p.animal : 'cat', color: Number.isInteger(p.color) ? p.color : null, hat: str(p.hat, 16, 'none'), face: str(p.face, 16, 'none'), back: str(p.back, 16, 'none') };
 }
-function partyState(p) { return { code: p.code, leader: p.leader, members: p.members.map(c => ({ id: c.id, profile: c.profile })) }; }
+function partyState(p) { return { code: p.code, leader: p.leader, pub: !!p.pub, show: p.show || null, inMatch: !!p.inMatch, startIn: p.pub && !p.inMatch ? Math.max(0, p.startAt - Date.now()) : null, members: p.members.map(c => ({ id: c.id, profile: c.profile })) }; }
+// ---- Quick Play: public rooms of strangers, bots fill the empty seats ----
+const PUB_MAX = 6, PUB_WAIT = 7000, PUB_JOIN_GRACE = 4000, PUB_MAX_WAIT = 15000;
+function quickJoin(c, show) {
+  const now = Date.now();
+  let best = null;
+  for (const p of parties.values()) if (p.pub && !p.inMatch && p.show === show && p.members.length < PUB_MAX && (!best || p.members.length > best.members.length)) best = p;
+  if (best) {
+    best.members.push(c); c.party = best;
+    best.startAt = best.members.length >= PUB_MAX ? Math.min(best.startAt, now + 2500) : Math.min(best.created + PUB_MAX_WAIT, Math.max(best.startAt, now + PUB_JOIN_GRACE));
+    broadcastParty(best);
+  } else {
+    const p = { code: makeCode(), leader: c.id, members: [c], pub: true, show, created: now, startAt: now + PUB_WAIT };
+    parties.set(p.code, p); c.party = p; broadcastParty(p);
+  }
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const p of parties.values()) if (p.pub && !p.inMatch && now >= p.startAt) {
+    p.inMatch = true; broadcastParty(p);
+    const msg = JSON.stringify({ t: 'start' }); for (const c of p.members) c.send(msg);
+  }
+}, 200);
 function broadcastParty(p) { const msg = JSON.stringify({ t: 'party', party: partyState(p) }); for (const c of p.members) c.send(msg); }
 function leaveParty(c) {
   const p = c.party; if (!p) return;
@@ -121,10 +144,12 @@ function handle(c, m) {
       const p = parties.get(code);
       if (!p) return c.send({ t: 'error', msg: 'Party not found' });
       if (p === c.party) return broadcastParty(p);
-      if (p.members.length >= PARTY_MAX) return c.send({ t: 'error', msg: 'That party is full (5 max)' });
+      if (p.members.length >= (p.pub ? PUB_MAX : PARTY_MAX)) return c.send({ t: 'error', msg: 'That party is full' });
+      if (p.pub && p.inMatch) return c.send({ t: 'error', msg: 'That match already started' });
       leaveParty(c); c.profile = cleanProfile(m.profile); p.members.push(c); c.party = p; broadcastParty(p);
       break;
     }
+    case 'quick': leaveParty(c); c.profile = cleanProfile(m.profile); quickJoin(c, /^[a-z]{3,8}$/.test(m.show) ? m.show : 'main'); break;
     case 'leave': leaveParty(c); break;
     case 'profile': if (c.party) { c.profile = cleanProfile(m.profile); broadcastParty(c.party); } break;
     case 'relay': {
