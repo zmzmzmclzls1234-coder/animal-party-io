@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#5a4bff">
 <title>ANIMAL PARTY.io</title>
 <link rel="stylesheet" href="fonts/fonts.css" onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Titan+One&display=swap';document.head.appendChild(l)">
-<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<script async src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <style>
 :root{--ink:#1b0f3a;--pink:#ff4fa0;--yellow:#ffd21f;--blue:#3aa0ff;--purple:#6b3cff;--green:#3ddc84;--red:#ff4b5c;--line:4px solid var(--ink);--drop:0 6px 0 var(--ink)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -144,7 +144,7 @@ input.field{pointer-events:auto;font-family:'Titan One','Arial Rounded MT Bold',
 #rotate{position:fixed;inset:0;z-index:10;display:none;place-items:center;text-align:center;background:linear-gradient(#4f6bff,#ff7ad9);font-family:'Titan One','Arial Rounded MT Bold','Arial Black',sans-serif;font-size:26px;padding:30px}
 #rotate .ico{animation:rot 1.6s ease-in-out infinite}
 @keyframes rot{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
-@media (orientation:portrait) and (pointer:coarse){#rotate{display:grid}}
+
 html.cg #rotate{display:none!important}
 #study{position:fixed;inset:0;z-index:999;background:#f1f3f6;color:#222;font-family:Arial,Helvetica,sans-serif;overflow:auto;-webkit-user-select:text;user-select:text;text-shadow:none}
 #study *{-webkit-text-stroke:0!important}
@@ -307,6 +307,49 @@ body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:au
  .home-left .profile{display:none}
 }
 @media (max-width:880px){ .nav{gap:4px} .tab{padding:5px 8px;font-size:12px} .hint-rot{display:none} .wallet{gap:5px} .pill{font-size:15px;padding:2px 10px 2px 4px} .pill .ico{width:22px;height:22px} #soundBtn{width:40px;height:40px;padding:0} .logo{font-size:19px} .logo span{font-size:14px} }
+
+/* ---------- PORTRAIT PHONES (html.port is set from JS when width < height) ---------- */
+html.port #lobby .topbar{height:58px;padding:0 10px}
+html.port .logo{font-size:19px}html.port .logo span{font-size:14px}
+html.port .nav{position:fixed;left:6px;right:6px;bottom:max(6px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:4px;z-index:3}
+html.port .tab{font-size:11px;padding:9px 2px;white-space:nowrap;text-align:center;position:relative;box-shadow:0 4px 0 var(--ink)}
+html.port .tab.on{transform:translateY(-3px)}
+html.port .tab .dot{position:absolute;top:-8px;right:-2px}
+html.port .wallet{gap:5px}html.port .pill{font-size:15px;padding:2px 10px 2px 4px}html.port .pill .ico{width:22px;height:22px}
+html.port #soundBtn{width:40px;height:40px;padding:0}
+html.port .hint-rot{display:none}
+html.port .home-left{left:8px;right:8px;top:64px;bottom:auto}
+html.port .partybox{width:auto;padding:8px 10px;transform:none}
+html.port .partybox h3{font-size:16px;margin-bottom:4px}
+html.port .slots{gap:4px;margin-bottom:6px}html.port .slot{width:52px;height:58px;flex:1}html.port .slot .av{width:44px;height:44px}
+html.port #codeInput{min-width:0;width:80px;font-size:15px;padding:6px 8px}html.port #btnCreate,html.port #btnJoin{font-size:14px;padding:8px 10px;white-space:nowrap}
+html.port .code{font-size:24px}
+html.port .home-left .profile{display:none}
+html.port .home-right{left:8px;right:8px;bottom:72px;align-items:stretch;gap:10px}
+html.port .showcard{width:auto;padding:6px 12px;transform:none}html.port .showcard .t{font-size:19px}html.port .showcard small{font-size:12px}
+html.port #playBtn{font-size:40px;padding:10px 0;transform:none;width:100%}
+html.port .panel{top:auto;bottom:64px;left:6px;right:6px;width:auto;height:62%;border-radius:22px 22px 18px 18px;padding:12px}
+html.port .panel h2{font-size:22px}
+html.port .grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+html.port .showgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+html.port .wheelbox{width:min(210px,26vh)}
+html.port #ltoast{top:150px}
+html.port #hudTimer{font-size:30px;top:12px}
+html.port #hudInfo{top:66px;left:12px;flex-direction:column;align-items:flex-start;gap:4px}
+html.port #hudInfo .chip{font-size:14px;padding:2px 8px}
+html.port #hudBoard{min-width:0;width:132px;top:10px;right:8px}
+html.port #hudBoard .r{font-size:12px;padding:1px 6px}html.port #hudBoard .n{max-width:62px}
+html.port #toast{top:120px;width:92%}html.port #toast div{font-size:20px;text-align:center}
+html.port #joy{width:128px;height:128px;bottom:max(28px,env(safe-area-inset-bottom))}
+html.port .tbtn{width:82px;height:82px;font-size:15px}
+html.port #btnA{bottom:max(34px,env(safe-area-inset-bottom))}
+html.port #btnB{right:max(116px,calc(env(safe-area-inset-right) + 96px));bottom:108px}
+html.port .introcard .t{font-size:34px}html.port #banner div{font-size:56px}html.port #count{font-size:110px}
+#admin select{background:#fff;color:#1b0f3a}#admin select option{background:#fff;color:#1b0f3a}
+#playBtn.waiting{filter:saturate(.85)}
+.wd{display:inline-flex;gap:12px;height:1em;align-items:center}.wd i{width:.32em;height:.32em;border-radius:50%;background:var(--ink);animation:wdot .9s ease-in-out infinite}
+.wd i:nth-child(2){animation-delay:.15s}.wd i:nth-child(3){animation-delay:.3s}
+@keyframes wdot{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-.25em);opacity:1}}
 </style>
 </head>
 <body>
@@ -503,7 +546,20 @@ const BOT_NAMES = ['Mochi', 'JellyKing', 'BeanBoss', 'Noodle', 'Pickles', 'Tofu'
 const SAVE_KEY = 'animalparty_v2';
 function loadSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
 const save = Object.assign({ name: 'Player' + randi(100, 999), animal: 'cat', color: null, hat: 'party', face: 'none', back: 'none', coins: CONFIG.START_COINS, crowns: 0, wins: 0, played: 0, xp: 0, owned: [], show: 'main', muted: false }, loadSave());
-function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } }
+function persist() {
+  let j = ''; try { j = JSON.stringify(save); localStorage.setItem(SAVE_KEY, j); } catch (e) { }
+  // CrazyGames cloud save (synced across devices when logged in)
+  try { if (typeof CG !== 'undefined' && CG.sdk && CG.sdk.data && j) CG.sdk.data.setItem(SAVE_KEY, j); } catch (e) { }
+}
+// merge a cloud save into the local one: keep whichever has more progress, never lose items
+function mergeSave(o) {
+  if (!o || typeof o !== 'object') return false;
+  const inv = Object.assign({}, save.inv || {});
+  for (const k in (o.inv || {})) inv[k] = Math.max(inv[k] || 0, o.inv[k] || 0);
+  if ((o.xp || 0) > (save.xp || 0) || (o.played || 0) > (save.played || 0)) Object.assign(save, o);
+  save.inv = inv; save.tutorial = Math.max(save.tutorial || 0, o.tutorial || 0);
+  return true;
+}
 const coins = () => CONFIG.UNLIMITED_MONEY ? Infinity : save.coins;
 // ---- inventory (items come from spin wheels; duplicates can be sold) ----
 if (!save.inv) { save.inv = { 'animal:cat': 1, 'animal:dog': 1, 'hat:party': 1 }; for (const id of save.owned || []) save.inv[id] = 1; }
@@ -540,6 +596,8 @@ const playerProfile = () => ({ name: save.name || 'Player', animal: save.animal,
 // ======= THREE setup =======
 const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({ antialias: true, canvas, powerPreference: 'high-performance' });
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); window.__glLost = true; }, false);
+canvas.addEventListener('webglcontextrestored', () => { window.__glLost = false; try { resize(); } catch (e) { } }, false);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -560,7 +618,16 @@ const rim = new THREE.DirectionalLight(0xffe0ff, 1.2); rim.position.set(-10, 8, 
 const world = new THREE.Group(); scene.add(world);
 const lobbyRoot = new THREE.Group(); scene.add(lobbyRoot);
 function lightFollow(x, z) { sun.position.set(x + 14, 32, z + 12); sun.target.position.set(x, 0, z); }
-function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+const View = { port: false, fov: 55, dm: 1 };
+function resize() {
+  const w = innerWidth, h = innerHeight, a = w / h; renderer.setSize(w, h, false); camera.aspect = a;
+  View.port = a < 1;
+  // keep the horizontal view roughly what a 4:5 screen would see, so portrait phones are not tunnel-vision
+  const want = Math.tan(55 * Math.PI / 360) * Math.max(1, 0.68 / a), cap = Math.tan(78 * Math.PI / 360);
+  View.fov = Math.atan(Math.min(want, cap)) * 360 / Math.PI; View.dm = Math.max(1, want / cap);
+  document.documentElement.classList.toggle('port', View.port);
+  camera.fov = View.fov; camera.updateProjectionMatrix();
+}
 addEventListener('resize', resize); resize();
 
 function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -1226,6 +1293,7 @@ const camLook = new THREE.Vector3(0, 1, 0);
 const CamFX = { shake: 0, speed: 0, fov: 55 };
 function camTo(px, py, pz, lx, ly, lz, dt, k = 6) {
   const a = dt == null ? 1 : 1 - Math.exp(-k * dt);
+  if (View.dm !== 1) { px = lx + (px - lx) * View.dm; py = ly + (py - ly) * View.dm; pz = lz + (pz - lz) * View.dm; }
   camera.position.x += (px - camera.position.x) * a; camera.position.y += (py - camera.position.y) * a; camera.position.z += (pz - camera.position.z) * a;
   camLook.x += (lx - camLook.x) * a; camLook.y += (ly - camLook.y) * a; camLook.z += (lz - camLook.z) * a;
   camera.lookAt(camLook);
@@ -1233,7 +1301,7 @@ function camTo(px, py, pz, lx, ly, lz, dt, k = 6) {
 }
 function camUpdate(dt) {
   CamFX.shake *= Math.exp(-9 * dt);
-  const target = 55 + CamFX.speed * 13; CamFX.speed *= Math.exp(-4 * dt);
+  const target = View.fov + CamFX.speed * 13; CamFX.speed *= Math.exp(-4 * dt);
   if (Math.abs(camera.fov - target) > 0.05) { camera.fov = lerp(camera.fov, target, 1 - Math.exp(-6 * dt)); camera.updateProjectionMatrix(); }
   const sl = $('#speed'); if (sl) sl.style.opacity = clamp((CamFX.speed - 0.35) * 1.6, 0, 0.85).toFixed(2);
 }
@@ -1408,26 +1476,44 @@ function shakeFor(a, amt) { if (!a) return; if (a.isPlayer) CamFX.shake = Math.m
 
 // ======= CrazyGames SDK v3 wrapper (safe when SDK is missing) =======
 const CG = {
-  sdk: null, env: 'none', inGameplay: false, chatOff: false, instant: false, invite: null, lastRoom: '',
-  async init() {
+  sdk: null, env: 'none', inGameplay: false, chatOff: false, instant: false, invite: null, lastRoom: '', q: [], gaveUp: false,
+  // The SDK script loads async and can take several seconds on slow mobile networks.
+  // Never give up on it: calls made before it is ready are queued and replayed in order.
+  init() {
+    return new Promise(res => {
+      let waited = 0, done = false; const fin = () => { if (!done) { done = true; res(); } };
+      const tick = async () => {
+        if (window.CrazyGames && window.CrazyGames.SDK) { await this.setup(); fin(); return; }
+        waited += 250;
+        if (waited >= (window.top !== window ? 3000 : 250)) fin();   // boot continues; detection keeps running
+        if (waited > 60000) { this.gaveUp = true; this.q = []; fin(); return; }   // not on CrazyGames
+        setTimeout(tick, 250);
+      };
+      tick();
+    });
+  },
+  async setup() {
     try {
-      if (window.CrazyGames && window.CrazyGames.SDK) {
-        await window.CrazyGames.SDK.init(); this.sdk = window.CrazyGames.SDK; this.env = this.sdk.environment;
-        if (this.env === 'disabled') { this.sdk = null; return; }
-        document.documentElement.classList.add('cg');
-        // device type from the SDK (not touch detection)
-        try { const t = this.sdk.user.systemInfo.device.type; if (t) Input.touch = (t === 'mobile' || t === 'tablet'); } catch (e) { }
-        // settings: muteAudio overrides our own sound toggle, disableChat hides player-typed text
-        const applyS = s => { if (!s) return; Sound.sdkMuted = !!s.muteAudio; this.chatOff = !!s.disableChat; Sound.applyVol(); };
-        try { applyS(this.sdk.game.settings); this.sdk.game.addSettingsChangeListener(applyS); } catch (e) { }
-        try { this.instant = !!this.sdk.game.isInstantMultiplayer; } catch (e) { }
-        try { const ip = this.sdk.game.inviteParams; this.invite = (ip && (ip.roomId || ip.party)) || this.sdk.game.getInviteParam('roomId') || null; } catch (e) { }
-        try { this.sdk.game.addJoinRoomListener(p => { const c = p && (p.roomId || p.party); if (c && window.onCGJoin) window.onCGJoin(String(c)); }); } catch (e) { }
-        try { const u = await this.sdk.user.getUser(); if (u && u.username && /^Player\d+$/.test(save.name)) { save.name = u.username.slice(0, 12); persist(); } } catch (e) { }
-      }
+      await window.CrazyGames.SDK.init(); const sdk = window.CrazyGames.SDK; this.env = sdk.environment;
+      if (this.env === 'disabled') { this.gaveUp = true; this.q = []; return; }
+      this.sdk = sdk;
+      document.documentElement.classList.add('cg');
+      try { const t = sdk.user.systemInfo.device.type; if (t) Input.touch = (t === 'mobile' || t === 'tablet'); } catch (e) { }
+      const applyS = s => { if (!s) return; Sound.sdkMuted = !!s.muteAudio; this.chatOff = !!s.disableChat; Sound.applyVol(); };
+      try { applyS(sdk.game.settings); sdk.game.addSettingsChangeListener(applyS); } catch (e) { }
+      try { this.instant = !!sdk.game.isInstantMultiplayer; } catch (e) { }
+      try { const ip = sdk.game.inviteParams; this.invite = (ip && (ip.roomId || ip.party)) || sdk.game.getInviteParam('roomId') || null; } catch (e) { }
+      try { sdk.game.addJoinRoomListener(p => { const c = p && (p.roomId || p.party); if (c && window.onCGJoin) window.onCGJoin(String(c)); }); } catch (e) { }
+      // cloud save
+      try { const c = sdk.data && sdk.data.getItem(SAVE_KEY); if (c && mergeSave(JSON.parse(c))) { persist(); if (window.onSaveMerged) window.onSaveMerged(); } else persist(); } catch (e) { }
+      try { const u = await sdk.user.getUser(); if (u && u.username && /^Player\d+$/.test(save.name)) { save.name = u.username.slice(0, 12); persist(); } } catch (e) { }
+      // replay everything the game asked for while the SDK was still loading
+      const q = this.q; this.q = []; for (const f of q) { try { f(sdk); } catch (e) { } }
+      if (this.lateInvite && this.invite && window.onCGJoin) window.onCGJoin(String(this.invite));
+      else if (this.lateInvite && this.instant && window.onCGInstant) window.onCGInstant();
     } catch (e) { this.sdk = null; }
   },
-  call(f) { try { if (this.sdk) f(this.sdk); } catch (e) { } },
+  call(f) { try { if (this.sdk) f(this.sdk); else if (!this.gaveUp) this.q.push(f); } catch (e) { } },
   loadingStart() { this.call(s => s.game.loadingStart()); },
   loadingStop() { this.call(s => s.game.loadingStop()); },
   gameplayStart() { if (this.inGameplay) return; this.inGameplay = true; this.call(s => s.game.gameplayStart()); },
@@ -1446,8 +1532,13 @@ const CG = {
     });
   },
   inviteLink(code) { try { return this.sdk && this.sdk.game.inviteLink ? this.sdk.game.inviteLink({ roomId: code }) : null; } catch (e) { return null; } },
+  lastAd: 0, bootT: Date.now(),
   midgameAd(done) {
     if (!this.sdk) return done();
+    // no ads for the first rounds / first 3 minutes, then at most one every 3 minutes
+    const now = Date.now();
+    if ((save.played || 0) < 3 || now - this.bootT < 180000 || now - this.lastAd < 180000 || this.inGameplay) return done();
+    this.lastAd = now;
     const blk = document.getElementById('adwait'); if (blk) blk.classList.remove('hidden');
     let fin = false; const end = () => { if (fin) return; fin = true; Sound.adMuted = false; Sound.applyVol(); if (blk) blk.classList.add('hidden'); done(); };
     try { this.sdk.ad.requestAd('midgame', { adStarted: () => { Sound.adMuted = true; Sound.applyVol(); }, adFinished: end, adError: end }); } catch (e) { end(); }
@@ -1486,15 +1577,27 @@ const Net = {
       const fin = (err) => { if (done) return; done = true; clearTimeout(to); err ? rej(err) : res(); };
       const to = setTimeout(() => { fin(new Error('Party server timeout')); try { ws.close(); } catch (e) { } }, 60000);
       ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.t === 'hello') { this.id = m.id; fin(); } this.onMsg(m); };
-      ws.onclose = () => { const had = !!this.party; this.ws = null; this.id = null; this.party = null; fin(new Error('Could not reach the party server')); if (had) onNetLost(); };
+      ws.onclose = () => {
+        const had = this.party; this.ws = null; this.id = null; this.party = null; fin(new Error('Could not reach the party server'));
+        if (had) { if (!had.pub && !this.leaving) this.rejoin = { code: had.code, n: 0 }; onNetLost(); this.retry(); }
+      };
       ws.onerror = () => { };
     });
   },
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
+  // dropped connection while in a private party: keep trying to get back in (exponential backoff, no attempt limit)
+  retry() {
+    const r = this.rejoin; if (!r || this.retryT) return;
+    const wait = Math.min(15000, 1000 * Math.pow(2, r.n++));
+    this.retryT = setTimeout(async () => {
+      this.retryT = null; if (this.rejoin !== r || this.party) return;
+      try { await this.join(r.code); } catch (e) { this.retry(); }
+    }, wait);
+  },
   async create() { await this.connect(); this.send({ t: 'create', profile: netProfile() }); },
   async quick() { await this.connect(); if (!QP.want) return; this.send({ t: 'quick', profile: netProfile(), show: save.show === 'draw' ? 'main' : save.show }); },
   async join(code) { await this.connect(); this.send({ t: 'join', code: String(code).toUpperCase().replace(/[^A-Z0-9]/g, ''), profile: netProfile() }); },
-  leave() { this.send({ t: 'leave' }); this.party = null; this.inMatch = false; renderParty(); CG.room(null); },
+  leave() { this.rejoin = null; this.send({ t: 'leave' }); this.party = null; this.inMatch = false; renderParty(); CG.room(null); },
   updateProfile() { if (this.party) this.send({ t: 'profile', profile: netProfile() }); },
   isLeader() { return !!this.party && this.party.leader === this.id; },
   hosting() { return !!this.party && this.inMatch && this.isLeader(); },
@@ -1506,6 +1609,7 @@ const Net = {
   fx(t, a) { if (this.fxq.length < 120) this.fxq.push([t, a]); },
   onMsg(m) {
     if (m.t === 'party') {
+      if (this.rejoin && m.party) { this.rejoin = null; lobbyToast('Reconnected to your party!'); }
       const prevLeader = this.party && this.party.leader;
       const prevIds = this.party ? this.party.members.map(x => x.id) : [];
       this.party = m.party;
@@ -1514,7 +1618,7 @@ const Net = {
       if (m.party.members.length > prevIds.length && prevIds.length) sfx('join');
       renderParty();
     } else if (m.t === 'start') { if (this.party && this.party.pub && this.isLeader()) startPublicShow(); }
-    else if (m.t === 'error') { lobbyToast(m.msg); }
+    else if (m.t === 'error') { if (this.rejoin) { this.rejoin = null; } lobbyToast(m.msg); }
     else if (m.t === 'relay') onRelay(m.from, m.d);
   },
   // --- per-frame networking ---
@@ -3148,21 +3252,7 @@ function startShow() {
   if (Net.party) { Net.inMatch = true; startRound(); }
   else matchmaking(() => startRound());
 }
-function matchmaking(cb) {
-  Game.state = 'match'; show('#lobby', false); show('#match');
-  const n = Math.max(...Game.episode.map(id => MODE_DEFS[id].players));
-  const beans = $('#matchBeans'); beans.innerHTML = imgTag(Portrait.head(netProfile()), 'av');
-  let c = 1; $('#matchCount').textContent = `${c}/${n}`;
-  const used = new Set([save.name]);
-  const step = () => {
-    if (Game.state !== 'match') return;
-    if (c >= n) { later(() => { show('#match', false); cb(); }, 400); return; }
-    c++; $('#matchCount').textContent = `${c}/${n}`;
-    const s = document.createElement('span'); s.innerHTML = imgTag(Portrait.head(botProfile(used)), 'av'); beans.appendChild(s); sfx('tick', 0.5, 1 + c * 0.04);
-    later(step, rand(80, 180));
-  };
-  later(step, 250);
-}
+function matchmaking(cb) { cb(); }   // no matchmaking screen: empty seats are filled instantly
 function startRound(opts = {}) {
   clearTimers(); clearWorld();
   const follower = !!opts.net;
@@ -3342,7 +3432,10 @@ function updateLobby(dt) {
   }
   for (const b of partyBeans) { b.animate(dt, 0); if (Math.random() < dt * 0.3) b.hop(); }
   const side = lobbyTab !== 'home' && innerWidth > 820;
-  camTo(side ? -2.3 : 0, 1.9, side ? 5.6 : (partyBeans.length ? 7.6 : 6.6), side ? -2.3 : 0, 1.05, 0, dt, 4);
+  if (View.port) {   // portrait: character in the upper middle; a bottom sheet covers the lower part
+    const sheet = lobbyTab !== 'home';
+    camTo(0, sheet ? 1.6 : 1.8, sheet ? 7.0 : (partyBeans.length ? 8.6 : 6.6), 0, sheet ? 0.1 : 0.9, 0, dt, 4);
+  } else camTo(side ? -2.3 : 0, 1.9, side ? 5.6 : (partyBeans.length ? 7.6 : 6.6), side ? -2.3 : 0, 1.05, 0, dt, 4);
   lightFollow(0, 0);
 }
 canvas.addEventListener('pointerdown', e => { if (Game.state === 'lobby') lobbyDrag = e.clientX; });
@@ -3584,7 +3677,13 @@ function placeHand() {
   if (!handTarget) return; const el = $(handTarget.sel), h = $('#hand');
   if (!el || !el.offsetParent) { h.style.opacity = 0; return; }
   const r = el.getBoundingClientRect(); h.style.opacity = 1;
-  h.style.left = (r.left + r.width * 0.55 - 22) + 'px'; h.style.top = (r.top + r.height * 0.5) + 'px';
+  const hx = r.left + r.width * 0.55 - 22, hy = r.top + r.height * 0.5;
+  h.style.left = hx + 'px'; h.style.top = hy + 'px';
+  // speech bubble sits ABOVE the target (never on top of its label) and stays on screen
+  const b = $('#handTxt'), bw = b.offsetWidth || 80, bh = b.offsetHeight || 30;
+  const above = r.top - bh - 8 > 4;
+  b.style.bottom = 'auto'; b.style.top = (above ? -(r.height * 0.5) - bh - 8 : 90) + 'px';
+  b.style.left = (clamp(r.left + r.width / 2 - bw / 2, 6, innerWidth - bw - 6) - hx) + 'px';
 }
 setInterval(placeHand, 200); addEventListener('resize', placeHand);
 // ---------- in-match coach card (tutorial) ----------
@@ -3595,8 +3694,8 @@ function coach(title, sub, n, of) {
 }
 function coachGo() { const c = $('#coach'); c.innerHTML = '<div class="ct ol">GO!</div>'; show('#coach'); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); sfx('go'); setTimeout(() => show('#coach', false), 1100); }
 function startTutorial() {
-  hideHand(); Game.tutorial = true; Game.episode = ['sumo']; Game.round = 0; sfx('click');
-  matchmaking(() => startRound());
+  hideHand(); Game.tutorial = true; Game.episode = ['sumo']; Game.round = 0;
+  startRound();   // straight into play: no lobby, no matchmaking screen for a first-time player
 }
 $('#giftBtn').onclick = () => { const a = claimDaily(); if (!a) return; sfx('coin'); sfx('win', 0.5); lobbyToast(`+${a} coins!`); updateWallet(); renderQuests(); updateQuestDot(); if (lobbyBean) lobbyBean.hop(); };
 
@@ -3604,43 +3703,29 @@ $('#giftBtn').onclick = () => { const a = claimDaily(); if (!a) return; sfx('coi
 //  QUICK PLAY (online matchmaking with strangers; bots fill empty seats)
 // =====================================================================
 const QP = { want: false, startAt: 0, offlineT: null, tick: null };
+function playWait(on) {   // the only sign of waiting: the PLAY button pulses with dots (tap again to cancel)
+  const b = $('#playBtn'); b.classList.toggle('waiting', on); b.innerHTML = on ? '<span class="wd"><i></i><i></i><i></i></span>' : 'PLAY!';
+}
 function quickPlay() {
+  if (QP.want) return cancelQuick();
   if (save.tutorial === 0 && !Net.party) return startTutorial();
   if (Net.party && !Net.party.pub) return startShow();
   const s = SHOWS.find(x => x.id === save.show) || SHOWS[0];
   if (s.mode === 'draw') return startShow();   // drawing rounds stay private (user-made drawings)
-  QP.want = true; Game.state = 'match'; show('#lobby', false); show('#match'); show('#matchCancel');
-  $('#matchTitle').textContent = 'FINDING PLAYERS'; $('#matchCount').textContent = '1';
-  $('#matchBeans').innerHTML = imgTag(Portrait.head(netProfile()), 'av'); $('#matchSub').textContent = 'Connecting...';
+  QP.want = true; sfx('click'); playWait(true);
   clearTimeout(QP.offlineT);
-  QP.offlineT = setTimeout(() => { if (QP.want && !(Net.party && Net.party.pub)) { QP.want = false; playOffline(); } }, 3500);
+  QP.offlineT = setTimeout(() => { if (QP.want && !(Net.party && Net.party.inMatch)) { QP.want = false; if (Net.party && Net.party.pub) Net.leave(); playOffline(); } }, 4500);
   Net.quick().catch(() => { if (QP.want) { QP.want = false; clearTimeout(QP.offlineT); playOffline(); } });
 }
-function playOffline() { show('#matchCancel', false); $('#matchSub').textContent = ''; Game.state = 'lobby'; startShow(); }
+function playOffline() { playWait(false); Game.state = 'lobby'; startShow(); }
 function cancelQuick() {
-  QP.want = false; clearTimeout(QP.offlineT); clearInterval(QP.tick);
+  QP.want = false; clearTimeout(QP.offlineT); clearInterval(QP.tick); playWait(false);
   if (Net.party && Net.party.pub) Net.leave();
-  show('#match', false); show('#lobby'); Game.state = 'lobby'; sfx('click');
+  Game.state = 'lobby'; sfx('click');
 }
-$('#matchCancel').onclick = cancelQuick;
-function updateQuickRoom() {
-  const P = Net.party;
-  if (!P || !P.pub || Net.inMatch || Game.state !== 'match') return;
-  clearTimeout(QP.offlineT);
-  if (P.startIn != null) QP.startAt = Date.now() + P.startIn;
-  $('#matchTitle').textContent = P.members.length > 1 ? 'PLAYERS FOUND!' : 'FINDING PLAYERS';
-  $('#matchCount').textContent = `${P.members.length} / 6`;
-  $('#matchBeans').innerHTML = P.members.map(m => `<span>${imgTag(Portrait.head(m.profile), 'av')}</span>`).join('');
-  show('#matchCancel', !P.inMatch);
-  clearInterval(QP.tick);
-  QP.tick = setInterval(() => {
-    if (!Net.party || !Net.party.pub || Game.state !== 'match') return clearInterval(QP.tick);
-    const s = Math.max(0, Math.ceil((QP.startAt - Date.now()) / 1000));
-    $('#matchSub').textContent = Net.party.inMatch || !s ? 'Starting!' : `Starting in ${s}...`;
-  }, 200);
-}
+function updateQuickRoom() { }
 function startPublicShow() {
-  QP.want = false; clearTimeout(QP.offlineT); clearInterval(QP.tick);
+  QP.want = false; clearTimeout(QP.offlineT); clearInterval(QP.tick); playWait(false);
   const id = Net.party.show;
   Game.episode = id && MODE_DEFS[id] && id !== 'draw' ? [id] : shuffle(MODE_IDS.filter(x => x !== 'draw')).slice(0, 3);
   Game.round = 0; Net.inMatch = true; startRound();
@@ -3671,7 +3756,7 @@ function renderParty() {
     $('#partyInfo').textContent = Net.isLeader() ? 'You are the leader. Press PLAY when ready!' : 'Waiting for the leader to start...';
   }
   const canPlay = !P || Net.isLeader();
-  $('#playBtn').disabled = !canPlay; $('#playBtn').innerHTML = canPlay ? 'PLAY!' : 'READY';
+  if (!QP.want) { $('#playBtn').disabled = !canPlay; $('#playBtn').innerHTML = canPlay ? 'PLAY!' : 'READY'; } else $('#playBtn').disabled = false;
   if (Game.state === 'lobby') refreshLobbyBean();
 }
 $('#btnCreate').onclick = async () => {
@@ -3728,7 +3813,6 @@ function loop(now) {
     import('./covers.js').catch(e => console.error(e)); return;
   }
   $('#pauseBtn').innerHTML = icon('pause', 28); $('#btnCopy').innerHTML = icon('copy', 26); $('#partyTitleIco').innerHTML = icon('users', 28);
-  addEventListener('pointerdown', () => { try { if (!CG.sdk && Input.touch && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } }, { once: true });
   buildLobby(); updateWallet(); renderParty();
   if (!CONFIG.UNLOCK_ALL) show('#unlockNote', false);
   requestAnimationFrame(loop);
@@ -3738,8 +3822,12 @@ function loop(now) {
   refreshOnline(); setInterval(() => { if (Game.state === 'lobby') refreshOnline(); }, 30000);
   setTimeout(liveConnect, 1500);
   window.onCGJoin = code => { if (Net.party && Net.party.code === code) return; if (Net.party) Net.leave(); doJoin(code); };
+  window.onCGInstant = () => { if (!Net.party && Game.state === 'lobby') $('#btnCreate').onclick(); };
+  window.onSaveMerged = () => { try { updateWallet(); renderParty(); refreshLobbyBean(); } catch (e) { } };
+  if (!CG.sdk) CG.lateInvite = true;   // SDK may still arrive; its invite is handled then
   const inv = CG.invite || new URLSearchParams(location.search).get('party');
   if (inv) doJoin(inv);
+  else if (save.tutorial === 0 && !CG.instant) startTutorial();   // zero-menu: first visit drops right into a round
   else if (CG.instant) $('#btnCreate').onclick();   // Instant Multiplayer: start a private party right away
 })();
 // party created -> CrazyGames invite button
@@ -3786,6 +3874,8 @@ const Admin = {
   key: sessionStorage.getItem('ap_admin') || '',
   open() {
     const el = $('#admin'); show('#admin');
+    if (this.built) { this.poll(); return; }   // keep whatever was typed: never rebuild the form
+    this.built = true;
     el.innerHTML = `<div class="card admincard"><div class="ah"><b>ADMIN PANEL</b><button class="btn" id="adClose">X</button></div>
       <div class="arow"><input class="field" id="adKey" type="password" placeholder="Admin key" value="${esc(this.key)}"><button class="btn" id="adLogin">LOGIN</button></div>
       <div id="adBody" class="${this.ok ? '' : 'dim'}">
@@ -3797,20 +3887,38 @@ const Admin = {
         <div class="arow"><button class="btn yellow" id="adEv">START EVENT</button><button class="btn" id="adStop">STOP EVENT</button></div>
         <h4>GIFT EVERYONE</h4><div class="arow"><input class="field" id="adCoins" type="number" value="500" min="1" style="width:90px"><input class="field" id="adGiftT" placeholder="Gift message" maxlength="140"><button class="btn yellow" id="adGift">SEND GIFT</button></div>
       </div><div class="astat" id="adStat">${this.ok ? 'Logged in' : 'Enter the admin key'}</div></div>`;
-    $('#adClose').onclick = () => show('#admin', false);
     const send = (op, extra = {}) => { this.key = $('#adKey').value.trim(); sessionStorage.setItem('ap_admin', this.key); Net.connect().then(() => Net.send(Object.assign({ t: 'admin', key: this.key, op }, extra))).catch(() => this.stat('Cannot reach the server')); };
-    $('#adLogin').onclick = () => send('login');
-    $('#adShout').onclick = () => send('shout', { text: $('#adText').value, name: $('#adName').value });
-    $('#adEv').onclick = () => send('event', { title: $('#adTitle').value, coinMul: +$('#adCm').value, xpMul: +$('#adXm').value, minutes: +$('#adMin').value });
-    $('#adStop').onclick = () => send('stopEvent');
-    $('#adGift').onclick = () => send('gift', { coins: +$('#adCoins').value, text: $('#adGiftT').value });
+    const acts = {
+      adClose: () => { show('#admin', false); clearInterval(this.pt); this.pt = null; },
+      adLogin: () => send('login'),
+      adShout: () => { const t = $('#adText').value.trim(); if (!t) return; send('shout', { text: t, name: $('#adName').value }); $('#adText').value = ''; },
+      adEv: () => send('event', { title: $('#adTitle').value, coinMul: +$('#adCm').value, xpMul: +$('#adXm').value, minutes: +$('#adMin').value }),
+      adStop: () => send('stopEvent'),
+      adGift: () => send('gift', { coins: +$('#adCoins').value, text: $('#adGiftT').value }),
+    };
+    this.send = send;
+    // one delegated listener: survives partial updates, never loses clicks
+    el.addEventListener('click', e => { const t = e.target.closest('button[id]'); if (t && acts[t.id]) acts[t.id](); });
+    // Enter sends, but not while a Korean/Japanese IME is still composing (avoids a doubled last syllable)
+    el.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+      const id = e.target.id; if (id === 'adKey') acts.adLogin(); else if (id === 'adText' || id === 'adName') acts.adShout(); else if (id === 'adGiftT' || id === 'adCoins') acts.adGift();
+      e.preventDefault();
+    });
+    this.poll();
   },
-  stat(t) { const s = $('#adStat'); if (s) s.textContent = t; },
+  // live server stats: only the status line is touched, and only when the numbers change
+  poll() {
+    clearInterval(this.pt);
+    this.pt = setInterval(() => { if (this.ok && this.send && !$('#admin').classList.contains('hidden')) this.send('login'); }, 5000);
+  },
+  stat(t) { const s = $('#adStat'); if (s && s.textContent !== t) s.textContent = t; },
   reply(m) {
     if (!m.ok) { this.ok = false; this.stat(m.msg || 'Failed'); sfx('error'); return; }
     this.ok = true; const b = $('#adBody'); if (b) b.classList.remove('dim');
     const ev = m.event ? ` · event: ${m.event.title} (${m.event.coinMul}x/${m.event.xpMul}x)` : '';
-    this.stat(`OK (${m.op}) · ${m.online} online · ${m.rooms} rooms${ev}`); sfx('pop');
+    const quiet = m.op === 'login' && this.lastOk; this.lastOk = true;
+    this.stat(`${m.op === 'login' ? 'Live' : 'OK (' + m.op + ')'} · ${m.online} online · ${m.rooms} rooms${ev}`); if (!quiet) sfx('pop');
   },
 };
 addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) { e.preventDefault(); Admin.open(); } });
