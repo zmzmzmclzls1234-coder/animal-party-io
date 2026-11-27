@@ -292,7 +292,7 @@ body.covermode>*:not(#coverUI){display:none!important}body.covermode{overflow:au
 #dLog{flex:1;overflow:auto;font-size:14px;font-weight:500;display:flex;flex-direction:column;gap:3px}
 #dLog b{font-weight:700}
 #dLog .ok{color:#119a4d;font-weight:700}#dLog .sys{color:#7a5cff;font-weight:700}
-#dInput{font-family:'Fredoka',sans-serif;font-weight:700;font-size:16px;border:3px solid var(--ink);border-radius:12px;padding:8px;outline:none;color:var(--ink)}
+#dInput{min-width:0;text-overflow:ellipsis;font-family:'Fredoka',sans-serif;font-weight:700;font-size:16px;border:3px solid var(--ink);border-radius:12px;padding:8px;outline:none;color:var(--ink)}
 #dInput:disabled{background:#eee}
 .dchoose{position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,255,255,.94)}
 .dchoose .opts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px}
@@ -388,6 +388,36 @@ html.port #coach{top:104px;padding:3px 14px 5px;border-radius:16px;max-width:88v
  #playBtn{font-size:28px;padding:6px 30px;transform:rotate(-2deg)}
  .panel{top:56px;bottom:8px}
 }
+
+/* ---------- overflow fixes: results, spin, draw on small screens ---------- */
+.resultcard{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+.resultcard .rbtns{position:sticky;bottom:-1px;background:#fff;padding:6px 0 2px;z-index:1}
+.rrow .nm{min-width:0}.rrow .nm>span:first-child,.rrow .nm b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .lb{white-space:nowrap}.rrow .q{flex:none}
+@media (max-height:500px){
+ .resultcard{padding:10px 14px}.resultcard h2{font-size:22px}.resultcard h2 svg{width:28px;height:28px}.resultcard .sub{font-size:14px}
+ .rlist{max-height:30vh;margin:6px 0 6px}.rrow{font-size:14px;padding:1px 8px;margin-bottom:4px;border-width:2px}.rrow .rk{font-size:15px;width:22px}.rrow .av{width:26px;height:26px}.rrow .q{width:20px;height:20px;border-width:2px}.rrow .lb{font-size:11px}
+ .firstwin{font-size:16px}.unlock{margin-bottom:6px}.unlock .ut{font-size:11px}.unlock .ub{height:9px}
+ .resultcard .btn{font-size:16px;padding:7px 16px}
+ #shopPanel{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto 1fr auto;column-gap:14px;align-content:start}
+ #shopPanel:not(.hidden){display:grid}#shopPanel.hidden{display:none}
+ #shopPanel h2{grid-column:1/3;margin-bottom:4px}
+ #shopPanel .wheelbox{grid-column:1;grid-row:2/5;width:min(190px,48vh);margin:0}
+ #shopPanel .wtabs{grid-column:2;grid-row:2}#shopPanel .odds{grid-column:2;grid-row:3;align-self:center;font-size:11px}#shopPanel #spinBtn{grid-column:2;grid-row:4;justify-self:center}
+ #ltoast{top:54px}
+ #shopPanel .wtab{padding:4px 3px}#shopPanel .wtab b{font-size:11px;white-space:nowrap}#shopPanel .wtab span{font-size:11px}
+}
+html.port .rrow{font-size:15px;padding:2px 8px}html.port .rrow .lb{font-size:11px}html.port .rrow .av{width:32px;height:32px}html.port .rrow .q{width:22px;height:22px}
+html.port .resultcard{min-width:0;width:94vw;padding:12px}
+/* drawing game in portrait: word + timer on top, canvas, then guesses; player list becomes a thin strip */
+html.port #drawUI{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr) minmax(130px,30%);gap:6px;padding:8px}
+html.port #drawUI .head{grid-column:1;padding:4px 10px;border-radius:16px}
+html.port #dWord{font-size:20px;letter-spacing:3px}html.port #dTimer{font-size:24px;min-width:44px}
+html.port .dplayers{display:flex;gap:4px;overflow-x:auto;overflow-y:hidden;padding:4px;border-radius:14px}
+html.port .dp{flex:none;margin:0;font-size:12px;padding:1px 5px}html.port .dp .av{width:26px;height:26px}html.port .dp .nm{max-width:56px}
+html.port .dtools .cl{width:24px;height:24px}html.port .dtools button{font-size:12px;padding:2px 7px}
+html.port .dchat{padding:6px;border-radius:14px}html.port #dLog{font-size:12px}html.port #dInput{font-size:16px;padding:6px}
+#hudInfo .chip.nexthint{font-size:13px;padding:2px 10px;background:#fff4c2;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -583,7 +613,7 @@ const BOT_NAMES = ['Mochi', 'JellyKing', 'BeanBoss', 'Noodle', 'Pickles', 'Tofu'
 // ======= save =======
 const SAVE_KEY = 'animalparty_v2';
 function loadSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
-const save = Object.assign({ name: 'Player' + randi(100, 999), animal: 'cat', color: null, hat: 'party', face: 'none', back: 'none', coins: CONFIG.START_COINS, crowns: 0, wins: 0, played: 0, xp: 0, owned: [], show: 'main', muted: false }, loadSave());
+const save = Object.assign({ name: 'Player' + randi(100, 999), animal: 'cat', color: null, hat: 'party', face: 'none', back: 'none', coins: CONFIG.START_COINS, crowns: 0, wins: 0, played: 0, xp: 0, owned: [], show: 'munch', muted: false }, loadSave());
 function persist() {
   let j = ''; try { j = JSON.stringify(save); localStorage.setItem(SAVE_KEY, j); } catch (e) { }
   // CrazyGames cloud save (synced across devices when logged in)
@@ -1182,6 +1212,7 @@ const ICONS = {
   m_paper: `<rect x="10" y="10" width="44" height="44" rx="6" fill="#e8dcff" ${O}/><path d="M10 34 H30 V54 H10 Z" fill="#4fd36a" ${O}/><path d="M30 34 C40 30 44 22 40 14" fill="none" stroke="#a0ffbc" stroke-width="6" stroke-linecap="round"/><circle cx="40" cy="14" r="6" fill="#ffc61a" ${O}/>`,
   m_sumo: `<ellipse cx="32" cy="44" rx="26" ry="10" fill="#ff6fa8" ${O}/><circle cx="22" cy="28" r="9" fill="#ffd21f" ${O}/><circle cx="42" cy="26" r="9" fill="#3aa0ff" ${O}/><path d="M31 18 l3 -8 M33 20 l7 -5" stroke="#1b0f3a" stroke-width="4" stroke-linecap="round"/>`,
   m_snake: `<path d="M12 46 C12 30 30 34 30 22 C30 12 48 10 52 20" fill="none" stroke="#1b0f3a" stroke-width="16" stroke-linecap="round"/><path d="M12 46 C12 30 30 34 30 22 C30 12 48 10 52 20" fill="none" stroke="#4fd36a" stroke-width="8" stroke-linecap="round"/><circle cx="52" cy="20" r="8" fill="#4fd36a" ${O}/><circle cx="54" cy="18" r="2" fill="#1b0f3a"/>`,
+  m_munch: `<circle cx="32" cy="34" r="24" fill="#ff8a3d" ${O}/><path d="M14 36 Q32 58 50 36 Z" fill="#1b0f3a"/><path d="M20 37 L24 42 L28 37 L32 42 L36 37 L40 42 L44 37" fill="#fff"/><circle cx="24" cy="26" r="4" fill="#1b0f3a"/><circle cx="40" cy="26" r="4" fill="#1b0f3a"/><circle cx="50" cy="12" r="6" fill="#ff5fb7" ${O}/>`,
   m_kart: `<rect x="10" y="26" width="44" height="16" rx="6" fill="#2fb5ff" ${O}/><path d="M22 26 L28 16 H40 L44 26" fill="#fff" ${O}/><circle cx="20" cy="46" r="7" fill="#2a2a3a" ${O}/><circle cx="44" cy="46" r="7" fill="#2a2a3a" ${O}/>`,
   m_race: `<path d="M16 54 V10" stroke="#1b0f3a" stroke-width="6" stroke-linecap="round"/><path d="M16 12 H50 L42 22 L50 32 H16 Z" fill="#fff" ${O}/><path d="M24 12 V32 M32 12 V32 M40 12 V24" stroke="#1b0f3a" stroke-width="3"/>`,
   m_shooter: `<circle cx="32" cy="32" r="22" fill="#fff" ${O}/><circle cx="32" cy="32" r="13" fill="#ff5252" ${O}/><circle cx="32" cy="32" r="4" fill="#fff" ${O}/>`,
@@ -2940,7 +2971,19 @@ class ShooterMode extends BaseMode {
       if (!frozen) {
         if (a.ctl !== 'bot') {
           const I = this.inp(a); mx = I.mx; mz = -I.my; dash = I.bP; J = I;
-          if (I.auto) { const n = nearestOther(a, this.actors, b => b.dead <= 0); if (n && n.d < 18) { aimYaw = Math.atan2(n.t.x - a.x, n.t.z - a.z); fire = this.los(a.x, a.z, n.t.x, n.t.z); } else if (I.len > 0.2) aimYaw = Math.atan2(mx, mz); }
+          if (I.auto) {
+            // touch: the player pulls the trigger (FIRE button). Soft aim assist only turns toward a rival
+            // that is in front of you and in sight; otherwise you aim where you move.
+            const face = I.len > 0.2 ? Math.atan2(mx, mz) : a.yaw;
+            let best = null, bs = 1e9;
+            for (const b of this.actors) {
+              if (b === a || b.dead > 0) continue; const d = Math.hypot(b.x - a.x, b.z - a.z); if (d > 16) continue;
+              const off = Math.abs(angDiff(face, Math.atan2(b.x - a.x, b.z - a.z))); if (off > 0.7 || !this.los(a.x, a.z, b.x, b.z)) continue;
+              const sc = d + off * 12; if (sc < bs) { bs = sc; best = b; }
+            }
+            aimYaw = best ? Math.atan2(best.x - a.x, best.z - a.z) : face;
+            fire = I.aH; J = Object.assign({}, I, { aP: false, aH: false });   // touch has no jump button here
+          }
           else {
             let ax = I.ax, az = I.az; if (a.ctl === 'local') { const h = aimGround(1); if (h) { ax = h.x; az = h.z; } }
             if (ax != null) aimYaw = Math.atan2(ax - a.x, az - a.z); fire = I.fH;
@@ -2993,6 +3036,205 @@ class ShooterMode extends BaseMode {
   timeUp() {
     const s = shuffle(this.actors.slice()).sort((a, b) => b.score - a.score || a.deaths - b.deaths);
     return makeResult(s.map(a => row(a, `${a.score} splats`)), this.def.q);
+  }
+}
+
+// =====================================================================
+//  PARTY MUNCH (eat things, grow bigger, eat smaller animals)
+// =====================================================================
+function seeded(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const MUNCH_TIERS = [
+  // r = footprint radius, v = mass gained, n = count, name for the "next" hint
+  { r: 0.32, v: 1, n: 120, name: 'CANDY', parts: [['candy', () => new THREE.SphereGeometry(0.32, 12, 8), [0, 0.32, 0], null]] },
+  { r: 0.55, v: 3, n: 45, name: 'CUPCAKES', parts: [['cup', () => new THREE.CylinderGeometry(0.42, 0.3, 0.5, 14), [0, 0.25, 0], 0xff8fc8], ['frost', () => new THREE.SphereGeometry(0.46, 14, 10, 0, 6.3, 0, 1.7), [0, 0.5, 0], null]] },
+  { r: 0.85, v: 7, n: 30, name: 'GIFTS', parts: [['gift', () => new THREE.BoxGeometry(1.2, 1.1, 1.2), [0, 0.55, 0], null], ['ribbon', () => new THREE.BoxGeometry(1.26, 1.16, 0.24), [0, 0.55, 0], 0xffd21f], ['ribbon2', () => new THREE.BoxGeometry(0.24, 1.16, 1.26), [0, 0.55, 0], 0xffd21f]] },
+  { r: 1.25, v: 14, n: 18, name: 'CHAIRS', parts: [['seat', () => new THREE.BoxGeometry(1.6, 0.3, 1.6), [0, 0.9, 0], null], ['back', () => new THREE.BoxGeometry(1.6, 1.4, 0.28), [0, 1.7, -0.66], null], ['legs', () => new THREE.BoxGeometry(1.3, 0.9, 1.3), [0, 0.45, 0], 0x8a5a3c]] },
+  { r: 1.9, v: 28, n: 12, name: 'TABLES', parts: [['ttop', () => new THREE.CylinderGeometry(1.9, 1.9, 0.28, 24), [0, 1.3, 0], 0xffffff], ['tleg', () => new THREE.CylinderGeometry(0.28, 0.6, 1.3, 12), [0, 0.65, 0], 0x8a5cff], ['tcake', () => new THREE.CylinderGeometry(0.45, 0.45, 0.4, 14), [0.6, 1.64, 0.3], null]] },
+  { r: 2.7, v: 55, n: 6, name: 'CAKES', parts: [['ck1', () => new THREE.CylinderGeometry(2.6, 2.7, 1.4, 28), [0, 0.7, 0], null], ['ck2', () => new THREE.CylinderGeometry(1.8, 1.9, 1.2, 28), [0, 2, 0], 0xfff1f8], ['ck3', () => new THREE.CylinderGeometry(1.0, 1.1, 1.0, 24), [0, 3.1, 0], null], ['cherry', () => new THREE.SphereGeometry(0.45, 12, 10), [0, 3.85, 0], 0xff2e4d]] },
+  { r: 3.9, v: 110, n: 3, name: 'BOUNCY CASTLES', parts: [['cbase', () => new THREE.BoxGeometry(7, 2.6, 7), [0, 1.3, 0], null], ['ctow', () => new THREE.CylinderGeometry(1.2, 1.2, 4.6, 16), [3, 2.3, 3], 0xffd21f], ['ctow2', () => new THREE.CylinderGeometry(1.2, 1.2, 4.6, 16), [-3, 2.3, -3], 0xffd21f], ['croof', () => new THREE.ConeGeometry(1.6, 2, 16), [3, 5.6, 3], 0xff5fb7], ['croof2', () => new THREE.ConeGeometry(1.6, 2, 16), [-3, 5.6, -3], 0xff5fb7]] },
+];
+const MUNCH_COLORS = [0xff5fb7, 0x3aa0ff, 0x7ee081, 0xffd21f, 0xa06bff, 0xff8a3d, 0x2fd6c6];
+const MSIZE = m => 1 + 0.17 * Math.sqrt(m);
+class MunchMode extends BaseMode {
+  start() {
+    scene.background = BG_GAME;
+    const L = this.L = 44;
+    // floor: party checker + rim
+    const fl = mesh(new THREE.BoxGeometry(L * 2 + 2, 1, L * 2 + 2), new THREE.MeshStandardMaterial({ map: checkerTex('#fff4fb', '#ffe1f0', 22), roughness: 0.8 }), false); fl.position.y = -0.5; world.add(fl);
+    for (const [x, z, w, d] of [[0, -L - 1, L * 2 + 4, 2], [0, L + 1, L * 2 + 4, 2], [-L - 1, 0, 2, L * 2 + 4], [L + 1, 0, 2, L * 2 + 4]]) world.add(box(w, 1.6, d, 0xff5fb7, [x, 0.3, z]));
+    const water = mesh(new THREE.PlaneGeometry(600, 600), mat(0x7fdcff, { roughness: 0.7 }), false); water.rotation.x = -Math.PI / 2; water.position.y = -6; world.add(water);
+    addClouds(world, 16, -4, 110);
+    // bunting poles around the edge (decoration)
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, R = L + 6; const g = grp(world, [Math.cos(a) * R, 0, Math.sin(a) * R]); part(g, sg('mpole', () => new THREE.CylinderGeometry(0.3, 0.4, 9, 10)), mat(pick(MUNCH_COLORS)), [0, 4.5, 0]); part(g, sg('mball', () => new THREE.SphereGeometry(1.1, 16, 12)), mat(pick(MUNCH_COLORS)), [0, 9.6, 0]); }
+    // props: deterministic layout so every client builds the same party
+    const rnd = seeded(20261127); this.props = []; this.inst = [];
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), col = new THREE.Color();
+    MUNCH_TIERS.forEach((T, ti) => {
+      const list = [];
+      for (let k = 0; k < T.n; k++) {
+        let x = 0, z = 0;
+        for (let tries = 0; tries < 40; tries++) {
+          x = (rnd() * 2 - 1) * (L - T.r - 1); z = (rnd() * 2 - 1) * (L - T.r - 1);
+          if (Math.hypot(x, z) < 7 + T.r) continue;                       // keep the centre clear for spawns
+          if (this.props.some(p => p.ti >= 3 && Math.hypot(p.x - x, p.z - z) < p.r + T.r + 0.6)) continue;
+          break;
+        }
+        const p = { i: this.props.length, ti, x, z, r: T.r, v: T.v, yaw: rnd() * 6.28, c: MUNCH_COLORS[(rnd() * MUNCH_COLORS.length) | 0], eaten: false, back: 0, k: list.length };
+        this.props.push(p); list.push(p);
+      }
+      const meshes = T.parts.map(([key, geo, off, color]) => {
+        const im = new THREE.InstancedMesh(sg('mu_' + key, geo), new THREE.MeshStandardMaterial({ roughness: 0.55, color: 0xffffff }), list.length);
+        im.castShadow = ti >= 2; im.receiveShadow = true; im.userData.off = off; im.userData.color = color; world.add(im); return im;
+      });
+      this.inst.push({ list, meshes });
+      for (const p of list) this.placeProp(p, 1);
+      for (const im of meshes) { for (const p of list) im.setColorAt(p.k, col.set(im.userData.color == null ? p.c : im.userData.color)); im.instanceColor.needsUpdate = true; }
+    });
+    this.eatT = new Float32Array(this.props.length);   // eat animation timers (visual only)
+    this.actors = this.lineup.map((p, i) => {
+      const a = makeActor(p, i); const ang = i / this.lineup.length * Math.PI * 2;
+      Object.assign(a, { x: Math.cos(ang) * 4, z: Math.sin(ang) * 4, mass: 0, size: 1, dead: 0, dashCd: 0, dashT: 0, best: 0 });
+      a.yaw = Math.atan2(a.x, a.z); a.ai = { t: 0, tx: 0, tz: 0, mode: 'food', skill: rand(0.55, 1) }; syncActor(a); return a;
+    });
+    const p = this.focus(); camTo(p.x, 16, p.z + 13, p.x, 0, p.z);
+  }
+  placeProp(p, s) {
+    const T = this.inst[p.ti]; if (!T) return;
+    const m4 = this._m4 || (this._m4 = new THREE.Matrix4()), o = this._o || (this._o = new THREE.Object3D());
+    for (const im of T.meshes) {
+      const off = im.userData.off;
+      o.position.set(p.x + (Math.cos(p.yaw) * off[0] + Math.sin(p.yaw) * off[2]) * s, off[1] * s, p.z + (-Math.sin(p.yaw) * off[0] + Math.cos(p.yaw) * off[2]) * s);
+      o.rotation.set(0, p.yaw, 0); o.scale.setScalar(Math.max(0.0001, s)); o.updateMatrix();
+      im.setMatrixAt(p.k, o.matrix); im.instanceMatrix.needsUpdate = true;
+    }
+  }
+  radius(a) { return 0.55 * a.size; }
+  canEat(a, p) { return p.r <= this.radius(a) * 1.08; }
+  eat(a, p) {
+    p.eaten = true; p.back = 14 + p.r * 4; a.mass += p.v; this.grow(a);
+    this.eatT[p.i] = 0.001; p.ex = a.x; p.ez = a.z;
+    FX.burst(p.x, 0.6 + p.r * 0.5, p.z, [p.c, 0xffffff], Math.min(18, 4 + p.v), 3 + p.r * 2, 0.11 + p.r * 0.04, 0.4);
+    if (p.ti >= 3) { FX.ring(p.x, 0.2, p.z, 0xffd21f, p.r * 1.6, 0.35); shakeFor(a, 0.12 + p.ti * 0.04); }
+    personal(a, p.ti >= 2 ? 'coin' : 'pop');
+  }
+  grow(a) {
+    const old = a.size; a.size = MSIZE(a.mass);
+    const lv = Math.floor(a.size * 2); if (lv > Math.floor(old * 2) && a.size > 1.4) {
+      // tell the player what they can eat now
+      const next = MUNCH_TIERS.find(T => T.r > this.radius(a) * 1.08); const now = [...MUNCH_TIERS].reverse().find(T => T.r <= this.radius(a) * 1.08);
+      if (now && (!a.lastTier || a.lastTier !== now.name)) { a.lastTier = now.name; notify(a, `BIGGER! You can eat ${now.name} now`); personal(a, 'win'); FX.ring(a.x, 0.1, a.z, a.color, this.radius(a) * 3, 0.5); }
+    }
+  }
+  kill(att, vic) {
+    const gain = Math.round(vic.mass * 0.5 + 6); att.mass += gain; this.grow(att); att.eats = (att.eats || 0) + 1;
+    vic.mass = Math.max(0, vic.mass * 0.45); vic.size = MSIZE(vic.mass); vic.dead = 2.2; vic.deaths = (vic.deaths || 0) + 1;
+    FX.burst(vic.x, 1 + vic.size * 0.5, vic.z, [vic.color, 0xffffff, 0xffd21f], 22, 8, 0.18, 0.6); FX.ring(vic.x, 0.2, vic.z, 0xffffff, this.radius(att) * 3, 0.4); FX.snd('hit', vic.x, vic.z);
+    shakeFor(att, 0.3); shakeFor(vic, 0.5);
+    notify(att, `CHOMP! You ate ${vic.p.name} (+${gain})`); personal(att, 'win');
+    notify(vic, `${att.p.name} ate you! Respawning...`); personal(vic, 'lose');
+  }
+  respawn(a) {
+    let best = null, bd = -1;
+    for (let k = 0; k < 12; k++) { const x = rand(-this.L + 4, this.L - 4), z = rand(-this.L + 4, this.L - 4); let dmin = 99; for (const b of this.actors) if (b !== a && b.dead <= 0) dmin = Math.min(dmin, Math.hypot(b.x - x, b.z - z) - this.radius(b) * 2); if (dmin > bd) { bd = dmin; best = [x, z]; } }
+    a.x = best[0]; a.z = best[1]; a.vx = a.vz = 0; a.inv = 2;
+  }
+  ai(a, dt) {
+    const ai = a.ai; ai.t -= dt; const R = this.radius(a);
+    if (ai.t <= 0) {
+      ai.t = rand(0.25, 0.5) / ai.skill;
+      let threat = null, prey = null, td = 1e9, pd = 1e9;
+      for (const b of this.actors) {
+        if (b === a || b.dead > 0) continue; const d = Math.hypot(b.x - a.x, b.z - a.z);
+        if (b.size >= a.size * 1.2 && d < this.radius(b) + 6 * ai.skill && d < td) { td = d; threat = b; }
+        if (a.size >= b.size * 1.2 && !(b.inv > 0) && d < 12 && d < pd) { pd = d; prey = b; }
+      }
+      if (threat) { ai.mode = 'flee'; ai.tx = a.x + (a.x - threat.x); ai.tz = a.z + (a.z - threat.z); }
+      else if (prey && Math.random() < ai.skill) { ai.mode = 'hunt'; ai.prey = prey; }
+      else {
+        ai.mode = 'food'; let bs = -1, bp = null;
+        for (const p of this.props) { if (p.eaten || !this.canEat(a, p)) continue; const d = Math.hypot(p.x - a.x, p.z - a.z); const sc = (p.v + 0.5) / (d * d + 4) * (0.6 + Math.random() * 0.8); if (sc > bs) { bs = sc; bp = p; } }
+        if (bp) { ai.tx = bp.x; ai.tz = bp.z; } else { ai.tx = rand(-30, 30); ai.tz = rand(-30, 30); }
+      }
+    }
+    if (ai.mode === 'hunt' && ai.prey && ai.prey.dead <= 0) { ai.tx = ai.prey.x; ai.tz = ai.prey.z; }
+    let dx = ai.tx - a.x, dz = ai.tz - a.z; const l = Math.hypot(dx, dz) || 1;
+    const dash = (ai.mode === 'flee' || ai.mode === 'hunt') && l < 6 && Math.random() < dt * 2 * ai.skill;
+    return { ax: dx / l, az: dz / l, dash };
+  }
+  view(dt) {
+    // eaten props: shrink into the eater, then hide; respawned ones pop back in
+    for (const p of this.props) {
+      const t = this.eatT[p.i];
+      if (p.eaten && t > 0) { const k = t / 0.25; if (k >= 1) { this.eatT[p.i] = 0; this.placeProp(p, 0); } else { this.eatT[p.i] = t + dt; this.placeProp(p, 1 - k); } }
+      else if (!p.eaten && t < 0) { const k = 1 + t / 0.35; this.eatT[p.i] = t + dt >= 0 ? 0 : t + dt; this.placeProp(p, Math.min(1, k * (1.25 - 0.25 * k))); }
+    }
+    for (const a of this.actors) {
+      a.bean.root.visible = a.dead <= 0 && !(a.inv > 0 && Math.floor(a.inv * 10) % 2);
+      a.bean.root.scale.setScalar(lerp(a.bean.root.scale.x || 1, a.size, 0.15));
+      if (a.tag) a.tag.y = 2.35 * a.size;
+      syncActor(a);
+      const sp = this.follower ? (a.mv || 0) : Math.hypot(a.vx, a.vz);
+      a.bean.animate(dt, clamp(sp / 8, 0, 1), false, 0);
+      if (a.dashT > 0) { camBoost(a, 1); if (Math.random() < 0.5) Particles.burst(a.x, 0.5, a.z, 0xffffff, 1, 1, 0.12 * a.size, 0.3, 0); }
+    }
+    this.hudT -= dt;
+    if (this.hudT <= 0) {
+      this.hudT = 0.25; const p = this.player;
+      if (p) { const next = MUNCH_TIERS.find(T => T.r > this.radius(p) * 1.08); HUD.info(`<div class="chip">${icon('trophy', 20)} ${Math.round(p.mass)}</div>${next ? `<div class="chip nexthint">NEXT: ${next.name}</div>` : ''}`); }
+      HUD.board(this.actors.slice().sort((a, b) => b.mass - a.mass).map(a => ({ n: a.p.name, c: a.color, v: Math.round(a.mass), me: a.isPlayer })));
+    }
+    const f = this.focus() || this.actors[0], s = f.size;
+    camTo(f.x, 11 + s * 4.2, f.z + 9 + s * 3.4, f.x, 0, f.z - 0.5, dt, 4); lightFollow(f.x, f.z);
+  }
+  update(dt, frozen) {
+    this.t += dt;
+    if (this.follower) {
+      smoothActors(this.actors, dt);
+      if (this.netE) { for (let i = 0; i < this.props.length; i++) { const e = this.netE.charCodeAt(i) === 49; const p = this.props[i]; if (e !== p.eaten) { p.eaten = e; if (e) { this.eatT[i] = 0.001; } else this.eatT[i] = -0.35; } } }
+      this.view(dt); return;
+    }
+    // props come back after a while (at their own spot, so every client agrees)
+    for (const p of this.props) if (p.eaten && p.back > 0) { p.back -= dt; if (p.back <= 0 && !this.actors.some(a => a.dead <= 0 && Math.hypot(a.x - p.x, a.z - p.z) < this.radius(a) + p.r + 1)) { p.eaten = false; this.eatT[p.i] = -0.35; } else if (p.back <= 0) p.back = 1; }
+    for (const a of this.actors) {
+      a.dashCd -= dt; a.dashT -= dt; if (a.inv > 0) a.inv -= dt;
+      if (a.dead > 0) { a.dead -= dt; if (a.dead <= 0) this.respawn(a); continue; }
+      let ax = 0, az = 0, dash = false;
+      if (!frozen) {
+        if (a.ctl !== 'bot') { const I = this.inp(a); ax = I.mx; az = -I.my; dash = I.bP || I.aP; }
+        else ({ ax, az, dash } = this.ai(a, dt));
+      }
+      const l = Math.hypot(ax, az); if (l > 1) { ax /= l; az /= l; }
+      const sp = (a.dashT > 0 ? 19 : 9.2) / Math.pow(a.size, 0.18) * (1 + (a.size - 1) * 0.12);
+      if (dash && a.dashCd <= 0) { a.dashT = 0.3; a.dashCd = 2.2; FX.snd('dash', a.x, a.z); FX.ring(a.x, 0.1, a.z, 0xffffff, this.radius(a) * 2.4, 0.3); }
+      const k = 1 - Math.exp(-10 * dt);
+      a.vx = lerp(a.vx || 0, ax * sp, k); a.vz = lerp(a.vz || 0, az * sp, k);
+      a.x = clamp(a.x + a.vx * dt, -this.L + this.radius(a), this.L - this.radius(a)); a.z = clamp(a.z + a.vz * dt, -this.L + this.radius(a), this.L - this.radius(a));
+      if (Math.hypot(a.vx, a.vz) > 0.5) a.yaw = turnToward(a.yaw, Math.atan2(a.vx, a.vz), 12 * dt);
+      // props: eat what fits, bump into what does not
+      const R = this.radius(a);
+      for (const p of this.props) {
+        if (p.eaten) continue; const dx = a.x - p.x, dz = a.z - p.z; const d = Math.hypot(dx, dz);
+        if (d > R + p.r + 0.2) continue;
+        if (this.canEat(a, p)) { if (d < R + p.r * 0.3) this.eat(a, p); }
+        else if (d < R * 0.8 + p.r) { const n = d || 1, push = R * 0.8 + p.r - d; a.x += dx / n * push; a.z += dz / n * push; }
+      }
+      a.best = Math.max(a.best || 0, a.mass);
+    }
+    // animals: the clearly bigger one swallows the smaller one
+    const live = this.actors.filter(a => a.dead <= 0);
+    for (const a of live) for (const b of live) {
+      if (a === b || a.dead > 0 || b.dead > 0 || b.inv > 0) continue;
+      if (a.size >= b.size * 1.2 && Math.hypot(a.x - b.x, a.z - b.z) < this.radius(a) * 0.9) this.kill(a, b);
+    }
+    separate(live.filter(a => a.dead <= 0), 0.5);
+    this.view(dt);
+    this.tickPending(dt);
+  }
+  netSnap() { return { a: packActors(this.actors, ['x', 'z', 'yaw', 'size', 'mass', 'dead', 'dashT', 'inv']), e: this.props.map(p => p.eaten ? 1 : 0).join('') }; }
+  netApply(m) { unpackActors(this.actors, ['x', 'z', 'yaw', 'size', 'mass', 'dead', 'dashT', 'inv'], m.a); this.netE = m.e; }
+  timeUp() {
+    const s = this.actors.slice().sort((a, b) => b.mass - a.mass);
+    return makeResult(s.map(a => row(a, `${Math.round(a.mass)} pts`)), this.def.q);
   }
 }
 
@@ -3234,11 +3476,12 @@ class DrawMode extends BaseMode {
 //  MODES & SHOWS
 // =====================================================================
 const MODE_DEFS = {
+  munch: { name: 'Party Munch', ico: 'm_munch', color: 'linear-gradient(135deg,#ff8a3d,#ff5fb7)', desc: 'Eat candy, cupcakes, chairs... the whole party! The bigger you get, the bigger things you can eat. Swallow smaller animals, run from bigger ones.', keys: [['WASD', 'Move'], ['SHIFT', 'Dash']], duration: 120, players: 8, q: 4, cls: MunchMode, touch: ['DASH'], goal: 'Get the biggest!' },
   paper: { name: 'Land Grab', ico: 'm_paper', color: 'linear-gradient(135deg,#2fd36a,#1fa2ff)', desc: 'Leave your land, draw a trail and loop back to claim everything inside. Get your trail cut and you are out!', keys: [['WASD', 'Move']], duration: 90, players: 8, q: 4, cls: PaperMode, touch: ['', ''], goal: 'Top 4 by land qualify' },
   sumo: { name: 'Bump Arena', ico: 'm_sumo', color: 'linear-gradient(135deg,#ff5fb7,#ffb02e)', desc: 'Shove everyone off the shrinking stage. Jump to dodge, dash to send them flying!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 75, players: 8, q: 4, cls: SumoMode, touch: ['JUMP', 'DASH'], goal: 'Last 4 standing qualify' },
   snake: { name: 'Snake Rush', ico: 'm_snake', color: 'linear-gradient(135deg,#7ee081,#11b5a4)', desc: 'Eat orbs to grow long. Crash your head into another tail and you are out!', keys: [['WASD', 'Steer'], ['SPACE', 'Boost']], duration: 90, players: 8, q: 4, cls: SnakeMode, touch: ['BOOST', ''], goal: 'Top 4 by length qualify' },
   race: { name: 'Obstacle Dash', ico: 'm_race', color: 'linear-gradient(135deg,#ff7ad9,#7a5cff)', desc: 'Sweepers, gaps, pushers and hammers stand between you and the finish line. Run!', keys: [['WASD', 'Run'], ['SPACE', 'Jump'], ['SHIFT', 'Dive']], duration: 150, players: 10, q: 6, cls: RaceMode, touch: ['JUMP', 'DIVE'], goal: 'First 6 to finish qualify' },
-  shooter: { name: 'Jelly Blaster', ico: 'm_shooter', color: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)', desc: 'Paint-blast everyone! Four hits and they are splatted. You respawn after a splat.', keys: [['WASD', 'Move'], ['MOUSE', 'Aim + Fire'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 90, players: 8, q: 4, cls: ShooterMode, touch: ['JUMP', 'DASH'], goal: 'Top 4 by splats qualify' },
+  shooter: { name: 'Jelly Blaster', ico: 'm_shooter', color: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)', desc: 'Paint-blast everyone! Four hits and they are splatted. You respawn after a splat.', keys: [['WASD', 'Move'], ['MOUSE', 'Aim + Fire'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 90, players: 8, q: 4, cls: ShooterMode, touch: ['FIRE', 'DASH'], goal: 'Top 4 by splats qualify' },
   draw: { name: 'Doodle Guess', ico: 'm_draw', color: 'linear-gradient(135deg,#ffd21f,#ff7a2e)', desc: 'Draw the secret word and guess what the others are drawing. Fast guesses score more!', keys: [['MOUSE', 'Draw'], ['ENTER', 'Guess']], duration: null, players: 6, q: 3, cls: DrawMode, touch: null, goal: 'Top 3 by points qualify' },
   turf: { name: 'Hex Paint', ico: 'm_turf', color: 'linear-gradient(135deg,#a06bff,#2fb5ff)', desc: 'Run over hex tiles to paint them your color. Jump to ground-pound a big splash!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 6, q: 3, cls: TurfMode, touch: ['JUMP', 'DASH'], goal: 'Top 3 by paint qualify' },
 };
