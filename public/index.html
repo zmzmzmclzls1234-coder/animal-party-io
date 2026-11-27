@@ -350,6 +350,44 @@ html.port .introcard .t{font-size:34px}html.port #banner div{font-size:56px}html
 .wd{display:inline-flex;gap:12px;height:1em;align-items:center}.wd i{width:.32em;height:.32em;border-radius:50%;background:var(--ink);animation:wdot .9s ease-in-out infinite}
 .wd i:nth-child(2){animation-delay:.15s}.wd i:nth-child(3){animation-delay:.3s}
 @keyframes wdot{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-.25em);opacity:1}}
+
+/* ---------- COMPACT HUD FOR PHONES (keep the game view clear) ---------- */
+@media (max-height:500px){
+ #joy{width:104px;height:104px;left:max(16px,env(safe-area-inset-left));bottom:14px;border-width:4px;background:rgba(255,255,255,.12)}
+ #knob{width:44px;height:44px;margin:-22px 0 0 -22px;border-width:3px}
+ .tbtn{width:64px;height:64px;font-size:12px;border-width:4px;box-shadow:0 4px 0 var(--ink)}
+ #btnA{right:max(16px,env(safe-area-inset-right));bottom:16px}
+ #btnB{right:max(90px,calc(env(safe-area-inset-right) + 74px));bottom:56px}
+ #hudTimer{font-size:26px;top:4px}
+ #pauseBtn{top:6px;left:8px;transform:scale(.78);transform-origin:0 0}
+ #hudInfo{top:8px;left:52px;gap:5px}#hudInfo .chip{font-size:14px;padding:1px 8px 1px 4px;box-shadow:0 2px 0 var(--ink)}#hudInfo .chip .ico{width:16px;height:16px}
+ #hudBoard{min-width:0;width:126px;top:6px;right:6px;gap:2px}
+ #hudBoard .r{font-size:11px;padding:0 5px;border-radius:8px}#hudBoard .r.me{border-width:2px}#hudBoard .n{max-width:58px}#hudBoard .v{font-size:11px}#hudBoard .dot{width:8px;height:8px}
+ #coach{top:44px;padding:3px 14px 5px;border-radius:16px}#coach .cstep{font-size:10px}#coach .ct{font-size:19px}#coach .cs{font-size:12px}#coach .ct.ol{font-size:34px}
+ #toast{top:52px}#toast div{font-size:18px}
+}
+html.port #joy{width:112px;height:112px;left:max(14px,env(safe-area-inset-left));border-width:4px;background:rgba(255,255,255,.12)}
+html.port #knob{width:46px;height:46px;margin:-23px 0 0 -23px;border-width:3px}
+html.port .tbtn{width:68px;height:68px;font-size:12px;border-width:4px;box-shadow:0 4px 0 var(--ink)}
+html.port #btnA{right:max(14px,env(safe-area-inset-right));bottom:max(30px,env(safe-area-inset-bottom))}
+html.port #btnB{right:max(92px,calc(env(safe-area-inset-right) + 78px));bottom:88px}
+html.port #hudTimer{font-size:24px;top:8px}
+html.port #pauseBtn{top:8px;left:8px;transform:scale(.8);transform-origin:0 0}
+html.port #hudInfo{top:52px;left:10px}html.port #hudInfo .chip{font-size:13px;padding:1px 7px 1px 4px;box-shadow:0 2px 0 var(--ink)}html.port #hudInfo .chip .ico{width:15px;height:15px}
+html.port #hudBoard{width:118px;top:8px;right:6px;gap:2px}
+html.port #hudBoard .r{font-size:10.5px;padding:0 5px;border-radius:8px}html.port #hudBoard .r.me{border-width:2px}html.port #hudBoard .n{max-width:54px}html.port #hudBoard .v{font-size:10.5px}html.port #hudBoard .dot{width:8px;height:8px}
+html.port #coach{top:104px;padding:3px 14px 5px;border-radius:16px;max-width:88vw}html.port #coach .ct{font-size:20px}html.port #coach .cs{font-size:12px}html.port #coach .ct.ol{font-size:34px}
+
+@media (max-height:500px) and (orientation:landscape){
+ #lobby .topbar{height:50px}.logo{font-size:18px}.logo span{font-size:13px}
+ .tab{font-size:12px;padding:5px 10px;white-space:nowrap}.pill{font-size:14px;padding:1px 9px 1px 3px}.pill .ico{width:20px;height:20px}#soundBtn{width:36px;height:36px;padding:0}
+ .home-left{left:10px;bottom:10px}.partybox{width:250px;padding:7px 10px;transform:none}.partybox h3{font-size:15px;margin-bottom:4px}
+ .slots{gap:4px;margin-bottom:6px}.slot{width:42px;height:48px}.slot .av{width:36px;height:36px}.slot small,.slot .nm{font-size:8px}
+ #btnCreate,#btnJoin{font-size:12px;padding:6px 8px;white-space:nowrap}#codeInput{min-width:0;width:62px;flex:0 0 62px;font-size:13px;padding:5px 6px}
+ .home-right{right:10px;bottom:10px;gap:8px}.showcard{width:220px;padding:4px 10px;transform:none}.showcard .t{font-size:15px}.showcard small{font-size:10px}.showcard .ico{width:30px;height:30px}
+ #playBtn{font-size:28px;padding:6px 30px;transform:rotate(-2deg)}
+ .panel{top:56px;bottom:8px}
+}
 </style>
 </head>
 <body>
@@ -3199,7 +3237,6 @@ const MODE_DEFS = {
   paper: { name: 'Land Grab', ico: 'm_paper', color: 'linear-gradient(135deg,#2fd36a,#1fa2ff)', desc: 'Leave your land, draw a trail and loop back to claim everything inside. Get your trail cut and you are out!', keys: [['WASD', 'Move']], duration: 90, players: 8, q: 4, cls: PaperMode, touch: ['', ''], goal: 'Top 4 by land qualify' },
   sumo: { name: 'Bump Arena', ico: 'm_sumo', color: 'linear-gradient(135deg,#ff5fb7,#ffb02e)', desc: 'Shove everyone off the shrinking stage. Jump to dodge, dash to send them flying!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 75, players: 8, q: 4, cls: SumoMode, touch: ['JUMP', 'DASH'], goal: 'Last 4 standing qualify' },
   snake: { name: 'Snake Rush', ico: 'm_snake', color: 'linear-gradient(135deg,#7ee081,#11b5a4)', desc: 'Eat orbs to grow long. Crash your head into another tail and you are out!', keys: [['WASD', 'Steer'], ['SPACE', 'Boost']], duration: 90, players: 8, q: 4, cls: SnakeMode, touch: ['BOOST', ''], goal: 'Top 4 by length qualify' },
-  kart: { name: 'Star Karts', ico: 'm_kart', color: 'linear-gradient(135deg,#2fb5ff,#7a5cff)', desc: 'Your kart drives itself. Steer through ★ stars to collect them. Boost into rivals to make them drop theirs. Most stars wins!', keys: [['A/D', 'Steer'], ['S', 'Brake'], ['SHIFT', 'Boost']], duration: 90, players: 6, q: 3, cls: KartMode, touch: ['BOOST'], goal: 'Most ★ stars wins' },
   race: { name: 'Obstacle Dash', ico: 'm_race', color: 'linear-gradient(135deg,#ff7ad9,#7a5cff)', desc: 'Sweepers, gaps, pushers and hammers stand between you and the finish line. Run!', keys: [['WASD', 'Run'], ['SPACE', 'Jump'], ['SHIFT', 'Dive']], duration: 150, players: 10, q: 6, cls: RaceMode, touch: ['JUMP', 'DIVE'], goal: 'First 6 to finish qualify' },
   shooter: { name: 'Jelly Blaster', ico: 'm_shooter', color: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)', desc: 'Paint-blast everyone! Four hits and they are splatted. You respawn after a splat.', keys: [['WASD', 'Move'], ['MOUSE', 'Aim + Fire'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 90, players: 8, q: 4, cls: ShooterMode, touch: ['JUMP', 'DASH'], goal: 'Top 4 by splats qualify' },
   draw: { name: 'Doodle Guess', ico: 'm_draw', color: 'linear-gradient(135deg,#ffd21f,#ff7a2e)', desc: 'Draw the secret word and guess what the others are drawing. Fast guesses score more!', keys: [['MOUSE', 'Draw'], ['ENTER', 'Guess']], duration: null, players: 6, q: 3, cls: DrawMode, touch: null, goal: 'Top 3 by points qualify' },
