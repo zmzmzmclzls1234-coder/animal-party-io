@@ -63,15 +63,16 @@ class Client {
       else if (op === 0x0 && this.frag) { this.frag.push(Buffer.from(payload)); if (fin) { const m = Buffer.concat(this.frag).toString('utf8'); this.frag = null; this.onMsg(m); } }
     }
   }
-  raw(op, data) {
+  raw(op, data, drop) {
     if (this.sock.destroyed) return;
+    if (drop && this.sock.writableLength > 256 * 1024) return;   // backpressure: skip stale snapshots for slow clients
     const len = data.length; let h;
     if (len < 126) h = Buffer.from([0x80 | op, len]);
     else if (len < 65536) { h = Buffer.alloc(4); h[0] = 0x80 | op; h[1] = 126; h.writeUInt16BE(len, 2); }
     else { h = Buffer.alloc(10); h[0] = 0x80 | op; h[1] = 127; h.writeUInt32BE(0, 2); h.writeUInt32BE(len, 6); }
     try { this.sock.write(Buffer.concat([h, data])); } catch (e) { }
   }
-  send(o) { this.raw(0x1, Buffer.from(typeof o === 'string' ? o : JSON.stringify(o))); }
+  send(o, drop) { this.raw(0x1, Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)), drop); }
   close() { try { this.raw(0x8, Buffer.alloc(0)); } catch (e) { } this.sock.destroy(); this.onClose(); }
   onClose() { if (this.closed) return; this.closed = true; clients.delete(this); leaveParty(this); }
   onMsg(s) {
@@ -89,7 +90,7 @@ server.on('upgrade', (req, sock) => {
   const cl = new Client(sock); cl.ip = String(req.headers['x-forwarded-for'] || sock.remoteAddress || '').split(',')[0].trim();
 });
 setInterval(() => { for (const c of clients) c.rate = 0; }, 1000);
-setInterval(() => { for (const c of clients) { if (!c.alive) { c.close(); continue; } c.alive = false; c.raw(0x9, Buffer.alloc(0)); } }, 25000);
+setInterval(() => { for (const c of clients) { if (!c.alive) { c.close(); continue; } c.alive = false; c.raw(0x9, Buffer.alloc(0)); } }, 15000);
 
 // ---------------- parties ----------------
 const parties = new Map();
@@ -132,7 +133,7 @@ function adminCmd(c, m) {
   c.send({ t: 'admin', ok: true, op: m.op, online: clients.size, rooms: parties.size, event: liveEvent() });
 }
 // ---- Quick Play: public rooms of strangers, bots fill the empty seats ----
-const PUB_MAX = 6, PUB_WAIT = 3000, PUB_JOIN_GRACE = 2000, PUB_MAX_WAIT = 8000;
+const PUB_MAX = 6, PUB_WAIT = 3000, PUB_JOIN_GRACE = 0, PUB_MAX_WAIT = 3000;   // wait 3 s for real players, then fill the rest
 function quickJoin(c, show) {
   const now = Date.now();
   let best = null;
@@ -186,7 +187,8 @@ function handle(c, m) {
       const p = c.party; if (!p) return;
       const out = JSON.stringify({ t: 'relay', from: c.id, d: m.d });
       if (out.length > 300000) return;
-      if (m.to === 'all') { for (const x of p.members) if (x !== c) x.send(out); }
+      const drop = !!(m.d && m.d.k === 's');   // world snapshots are replaced by the next one
+      if (m.to === 'all') { for (const x of p.members) if (x !== c) x.send(out, drop); }
       else if (m.to === 'host') { const h = p.members.find(x => x.id === p.leader); if (h && h !== c) h.send(out); }
       else { const x = p.members.find(x => x.id === m.to); if (x && x !== c) x.send(out); }
       break;
