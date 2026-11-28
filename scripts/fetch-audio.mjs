@@ -53,7 +53,7 @@ async function get(u) {
 let ffStatic = null; try { ffStatic = (await import('ffmpeg-static')).default; } catch { }
 const ff = [process.env.FFMPEG, ffStatic, 'ffmpeg'].filter(Boolean).find(bin => { try { return spawnSync(bin, ['-version']).status === 0; } catch { return false; } }) || null;
 function toMp3(src, dst, music) {
-  const af = music ? 'loudnorm=I=-18:TP=-1.5' : 'silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse';
+  const af = music ? 'loudnorm=I=-14:TP=-1.0' : 'silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse';
   const args = ['-y', '-loglevel', 'error', '-i', src, '-af', af, '-ar', '44100', '-ac', music ? '2' : '1', '-b:a', music ? '96k' : '64k', dst];
   return spawnSync(ff, args).status === 0 && fs.existsSync(dst) && fs.statSync(dst).size > 200;
 }
