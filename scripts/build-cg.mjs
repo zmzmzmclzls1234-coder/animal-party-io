@@ -13,6 +13,7 @@ const fd = join(root, 'fonts');
 if (existsSync(fd)) for (const f of readdirSync(fd)) if (/\.(woff2|css)$/i.test(f)) files.push(['fonts/' + f, join(fd, f)]);
 const sd = join(root, 'sounds');
 if (existsSync(sd)) for (const f of readdirSync(sd)) if (/\.(mp3|ogg|wav|json)$/i.test(f)) files.push(['sounds/' + f, join(sd, f)]);
+if (existsSync(join(root, 'words.txt'))) files.push(['words.txt', join(root, 'words.txt')]);
 
 const T = new Uint32Array(256);
 for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; T[n] = c >>> 0; }
