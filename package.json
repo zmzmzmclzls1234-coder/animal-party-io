@@ -5,8 +5,8 @@
   "description": "ANIMAL PARTY.io - io party game collection with 5-player parties",
   "main": "server.js",
   "scripts": {
-    "postinstall": "node scripts/fetch-three.mjs && node scripts/fetch-fonts.mjs && node scripts/fetch-audio.mjs && node scripts/build-cg.mjs",
-    "build": "node scripts/fetch-three.mjs && node scripts/fetch-fonts.mjs && node scripts/fetch-audio.mjs && node scripts/build-cg.mjs",
+    "postinstall": "node scripts/fetch-three.mjs && node scripts/fetch-fonts.mjs && node scripts/fetch-audio.mjs && node scripts/build-words.mjs && node scripts/build-cg.mjs",
+    "build": "node scripts/fetch-three.mjs && node scripts/fetch-fonts.mjs && node scripts/fetch-audio.mjs && node scripts/build-words.mjs && node scripts/build-cg.mjs",
     "start": "node server.js"
   },
   "engines": {
@@ -15,5 +15,8 @@
   "license": "UNLICENSED",
   "optionalDependencies": {
     "ffmpeg-static": "^5.2.0"
+  },
+  "dependencies": {
+    "dictionary-en": "^4.0.0"
   }
 }
