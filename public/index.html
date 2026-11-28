@@ -5394,7 +5394,7 @@ const MODE_DEFS = {
   turf: { name: 'Hex Paint', ico: 'm_turf', color: 'linear-gradient(135deg,#a06bff,#2fb5ff)', desc: 'Run over hex tiles to paint them your color. Jump to ground-pound a big splash!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 6, q: 3, cls: TurfMode, touch: ['JUMP', 'DASH'], goal: 'Top 3 by paint qualify' },
 };
 const MODE_IDS = Object.keys(MODE_DEFS);
-const SHOWS = [{ id: 'main', name: 'Party Mix', ico: 'main', desc: '3 random games. Win the final for a trophy!', color: 'linear-gradient(135deg,#ff5fb7,#7a5cff)' }]
+const SHOWS = [{ id: 'main', name: 'Party Mix', ico: 'main', desc: '4-5 random games. Only a few drop out each round. Win the final for a trophy!', color: 'linear-gradient(135deg,#ff5fb7,#7a5cff)' }]
   .concat(MODE_IDS.map(id => ({ id, mode: id, name: MODE_DEFS[id].name, ico: MODE_DEFS[id].ico, desc: MODE_DEFS[id].goal, color: MODE_DEFS[id].color })));
 
 function botProfile(used) {
@@ -5434,22 +5434,33 @@ function clearWorld() {
 
 // ---- shows: Party Mix is a 3-round tournament (everyone -> 6 -> 3 -> 1 winner); a single game is one round ----
 const WORD_MODES = ['draw', 'hang'];
+// Party Mix: 4 games (5 with a 10-player opener), only a couple knocked out each round until 3 reach the final.
+// A single-game show is a 3-round mini tournament of that game (Sky Summit and the word games stay one long round).
+const LONG_MODES = ['climb'];
 function pickEpisode(showId) {
   const s = SHOWS.find(x => x.id === (showId || save.show)) || SHOWS[0];
-  if (s.mode) return [s.mode];
-  const any = MODE_IDS.filter(m => !WORD_MODES.includes(m) && m !== 'climb'), big = any.filter(m => MODE_DEFS[m].players >= 8);
-  const r1 = pick(big), r2 = pick(any.filter(m => m !== r1)), r3 = pick(any.filter(m => m !== r1 && m !== r2));
-  return [r1, r2, r3];
+  if (s.mode) return WORD_MODES.includes(s.mode) || LONG_MODES.includes(s.mode) ? [s.mode] : [s.mode, s.mode, s.mode];
+  const any = MODE_IDS.filter(m => !WORD_MODES.includes(m) && !LONG_MODES.includes(m)), big = any.filter(m => MODE_DEFS[m].players >= 8);
+  const ep = [pick(big)], rounds = MODE_DEFS[ep[0]].players >= 10 ? 5 : 4;
+  while (ep.length < rounds) ep.push(pick(any.filter(m => !ep.includes(m))));
+  return ep;
+}
+// how many go through each round: an even slide from everyone down to 3 finalists, then 1 winner
+function showPlan(n, rounds) {
+  const q = []; for (let i = 0; i < rounds - 1; i++) q.push(Math.max(3, Math.min(n - 1, Math.round(n - (n - 3) * (i + 1) / (rounds - 1)))));
+  q.push(1); return q;
 }
 function roundQ(id, n) {
   if (Game.episode.length < 2) return MODE_DEFS[id].q;
   if (Game.round >= Game.episode.length - 1) return 1;
-  return Game.round === 0 ? Math.max(3, Math.min(6, n - 2)) : Math.min(3, n - 1);
+  const plan = Game.plan || showPlan(n, Game.episode.length);
+  return Math.max(1, Math.min(n - 1, plan[Game.round]));
 }
 function startShow(opts = {}) {
   if (Net.party && !Net.isLeader()) return;
   Game.episode = opts.episode || pickEpisode();
   Game.round = 0; Game.myRank = 0; Game.showStart = { coins: save.coins, xp: save.xp };
+  Game.plan = Game.episode.length > 1 ? showPlan((opts.lineup || []).length || MODE_DEFS[Game.episode[0]].players, Game.episode.length) : null;
   Game.lineup = opts.lineup || buildLineup(MODE_DEFS[Game.episode[0]].players);
   if (Net.party) Net.inMatch = true;
   startRound();
