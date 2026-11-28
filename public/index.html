@@ -526,6 +526,7 @@ html.port .item{min-height:auto;padding:4px;border-radius:14px}html.port .item .
  .item{min-height:auto;padding:3px;border-radius:13px}.item .ipic,.item .ipic.worn{width:60px;height:60px}.item .nm{font-size:11px}.item .rar{font-size:8px}
  #ltoast{top:60px}
 }
+#rFirstShow{white-space:nowrap;font-size:clamp(18px,5.4vw,26px);padding:12px 22px}
 </style>
 </head>
 <body>
@@ -724,7 +725,7 @@ const BOT_NAMES = ['Mochi', 'JellyKing', 'BeanBoss', 'Noodle', 'Pickles', 'Tofu'
 // ======= save =======
 const SAVE_KEY = 'animalparty_v2';
 function loadSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
-const save = Object.assign({ name: 'Player' + randi(100, 999), animal: 'cat', color: null, hat: 'party', face: 'none', back: 'none', coins: CONFIG.START_COINS, crowns: 0, wins: 0, played: 0, xp: 0, owned: [], show: 'munch', muted: false }, loadSave());
+const save = Object.assign({ name: 'Player' + randi(100, 999), animal: 'cat', color: null, hat: 'party', face: 'none', back: 'none', coins: CONFIG.START_COINS, crowns: 0, wins: 0, played: 0, xp: 0, owned: [], show: 'main', muted: false }, loadSave());
 function persist() {
   let j = ''; try { j = JSON.stringify(save); localStorage.setItem(SAVE_KEY, j); } catch (e) { }
   // CrazyGames cloud save (synced across devices when logged in)
@@ -1521,6 +1522,7 @@ const ICONS = {
   m_kart: `<rect x="10" y="26" width="44" height="16" rx="6" fill="#2fb5ff" ${O}/><path d="M22 26 L28 16 H40 L44 26" fill="#fff" ${O}/><circle cx="20" cy="46" r="7" fill="#2a2a3a" ${O}/><circle cx="44" cy="46" r="7" fill="#2a2a3a" ${O}/>`,
   m_race: `<path d="M16 54 V10" stroke="#1b0f3a" stroke-width="6" stroke-linecap="round"/><path d="M16 12 H50 L42 22 L50 32 H16 Z" fill="#fff" ${O}/><path d="M24 12 V32 M32 12 V32 M40 12 V24" stroke="#1b0f3a" stroke-width="3"/>`,
   m_shooter: `<circle cx="32" cy="32" r="22" fill="#fff" ${O}/><circle cx="32" cy="32" r="13" fill="#ff5252" ${O}/><circle cx="32" cy="32" r="4" fill="#fff" ${O}/>`,
+  m_showdown: `<circle cx="32" cy="40" r="20" fill="#ffd84a" ${O}/><rect x="28" y="14" width="8" height="28" rx="3" fill="#7a5cff" ${O}/><rect x="8" y="34" width="48" height="7" rx="3" fill="#ff3d6e" ${O}/><rect x="14" y="18" width="36" height="6" rx="3" fill="#9fd8ff" ${O}/>`,
   m_hexdrop: `<path d="M32 6 L52 18 V40 L32 52 L12 40 V18 Z" fill="#ff8fd0" ${O}/><path d="M20 46 L32 39 L44 46" fill="none" stroke="#1b0f3a" stroke-width="4" stroke-linecap="round"/><path d="M26 56 L38 56 M29 61 L35 61" stroke="#6fd8ff" stroke-width="5" stroke-linecap="round"/><circle cx="32" cy="26" r="7" fill="#fff" ${O}/>`,
   m_hang: `<path d="M10 56 H40 M18 56 V8 H44 V16" stroke="#2a1650" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="44" cy="24" r="8" fill="#ffe8c2" ${O}/><path d="M44 32 V46 M44 36 L36 42 M44 36 L52 42 M44 46 L38 56 M44 46 L50 56" stroke="#7a5cff" stroke-width="5" stroke-linecap="round"/>`,
   m_draw: `<path d="M12 52 L16 38 L42 12 L52 22 L26 48 Z" fill="#ffd21f" ${O}/><path d="M42 12 L52 22" stroke="#ff5fb7" stroke-width="8"/><path d="M12 52 L16 38 L26 48 Z" fill="#ffe8c2" ${O}/>`,
@@ -1951,6 +1953,23 @@ function separate(list, r, onHit) {
   }
 }
 function nearestOther(a, list, filter) { let best = null, bd = Infinity; for (const b of list) { if (b === a || !b.alive || (filter && !filter(b))) continue; const dd = d2(a.x, a.z, b.x, b.z); if (dd < bd) { bd = dd; best = b; } } return best ? { t: best, d: Math.sqrt(bd) } : null; }
+// bots that push into a wall or a corner: after ~1 s of wanting to move but going nowhere they slide off
+// sideways (leaning toward the arena centre) for a moment, then their own AI takes over again
+function botGuard(a, dt, ax, az) {
+  const g = a._g || (a._g = { t: 0, x: a.x, z: a.z, esc: 0, ex: 0, ez: 0 });
+  if (g.esc > 0) { g.esc -= dt; g.x = a.x; g.z = a.z; g.t = 0; return [g.ex, g.ez]; }
+  const want = Math.hypot(ax, az) > 0.3; g.t += dt;
+  if (g.t >= 0.9) {
+    const moved = Math.hypot(a.x - g.x, a.z - g.z), t = g.t; g.x = a.x; g.z = a.z; g.t = 0;
+    if (want && moved < 0.55 * t) {
+      const l = Math.hypot(ax, az) || 1, sd = Math.random() < 0.5 ? 1 : -1, c = Math.hypot(a.x, a.z) || 1;
+      let ex = -az / l * sd * 0.7 - a.x / c * 0.7, ez = ax / l * sd * 0.7 - a.z / c * 0.7; const el = Math.hypot(ex, ez) || 1;
+      g.ex = ex / el; g.ez = ez / el; g.esc = rand(0.6, 1.1); if (a.ai) { a.ai.t = 0; a.ai.unstuck = (a.ai.unstuck || 0) + 1; }
+      return [g.ex, g.ez];
+    }
+  }
+  return [ax, az];
+}
 // shared jump physics for flat-floor modes
 function jumpPhys(a, dt, I, floorOK = true) {
   if (I && I.aP && a.grounded) { a.vy = 10.5; a.grounded = false; a.jumps = (a.jumps || 0) + 1; if (a.isPlayer) sfx('jump'); FX.dust(a.x, a.z, 4); }
@@ -2458,7 +2477,7 @@ class SumoMode extends BaseMode {
     });
     const p = this.focus(); camTo(p.x * 0.6, 17, p.z * 0.6 + 15, p.x * 0.6, 0, p.z * 0.6);
     // first-ever match: guided rules, the others go easy and gradually tumble off
-    if (Game.tutorial) this.tut = { phase: 'explain', t: 0, step: -1, stepT: 0, moved: 0, slipT: 3 };
+    if (Game.tutorial) this.tut = { phase: 'explain', t: 0, step: -1, stepT: 0, moved: 0, slipT: 2 };
   }
   tutUpdate(dt) {
     const T = this.tut, me = this.actors.find(a => a.isPlayer); if (!T || !me) return;
@@ -2471,7 +2490,7 @@ class SumoMode extends BaseMode {
     ];
     if (T.phase === 'explain') {
       T.moved += Math.hypot(me.vx, me.vz) * dt;
-      const adv = T.step < 0 || (T.step === 0 && (T.moved > 4 || T.stepT > 5)) || (T.step === 1 && (me.dashT > 0 || T.stepT > 5)) || (T.step === 2 && T.stepT > 2.6);
+      const adv = T.step < 0 || (T.step === 0 && (T.moved > 3 || T.stepT > 4)) || (T.step === 1 && (me.dashT > 0 || T.stepT > 4)) || (T.step === 2 && T.stepT > 1.6);
       if (adv) {
         T.step++; T.stepT = 0;
         if (T.step >= STEPS.length) { T.phase = 'play'; coach(null); coachGo(); return; }
@@ -2482,7 +2501,7 @@ class SumoMode extends BaseMode {
     // play: every few seconds one of the others misjudges the edge
     T.slipT -= dt;
     if (T.slipT <= 0) {
-      T.slipT = rand(3.2, 4.6);
+      T.slipT = rand(2.2, 3.2);
       const c = this.actors.filter(a => !a.isPlayer && a.alive && !a.falling && !a.ai.slip).sort((a, b) => Math.hypot(b.x, b.z) - Math.hypot(a.x, a.z))[0];
       if (c) c.ai.slip = 1;
     }
@@ -2504,17 +2523,25 @@ class SumoMode extends BaseMode {
       const l = Math.hypot(tx, tz) || 1;
       return { ax: tx / l * (this.tut.phase === 'explain' ? 0.35 : 0.7), az: tz / l * (this.tut.phase === 'explain' ? 0.35 : 0.7), dash: false, jump: false };
     }
-    const n = nearestOther(a, this.actors, b => !b.falling);
-    let tx = 0, tz = 0; if (n) { tx = (n.t.x - a.x) / n.d; tz = (n.t.z - a.z) / n.d; }
-    if (ai.t <= 0) { ai.t = rand(0.4, 1.2); ai.wx = rand(-0.7, 0.7); ai.wz = rand(-0.7, 0.7); ai.idle = Math.random() < 0.15; }
-    tx += ai.wx; tz += ai.wz;
-    const r = Math.hypot(a.x, a.z), safe = this.R - 3.2;
-    if (ai.idle) { tx *= 0.15; tz *= 0.15; }
-    if (r > safe) { const w = clamp((r - safe) / 2.5, 0, 1.2); tx = lerp(tx, -a.x / r, w); tz = lerp(tz, -a.z / r, w); }
-    const l = Math.hypot(tx, tz) || 1;
-    const facing = n ? (Math.sin(a.yaw) * (n.t.x - a.x) + Math.cos(a.yaw) * (n.t.z - a.z)) / n.d : 0;
-    const jump = !!(n && n.t.dashT > 0 && n.d < 3.2 && Math.random() < 0.5 && r < this.R - 2);
-    return { ax: tx / l * 0.9, az: tz / l * 0.9, dash: !!(n && n.d < 2.9 && facing > 0.75 && Math.random() < dt * 4 && r < this.R - 1.5), jump };
+    // pick a victim (someone near the edge and close by) and keep it for a while instead of chasing whoever is nearest
+    const R = this.R, r = Math.hypot(a.x, a.z), safe = R - 3.2;
+    if (!ai.vic || ai.vic.falling || !ai.vic.alive || ai.t <= 0) {
+      ai.t = rand(1.5, 3); ai.idle = Math.random() < 0.08; let bs = -1e9; ai.vic = null;
+      for (const b of this.actors) { if (b === a || b.falling || !b.alive) continue; const d = Math.hypot(b.x - a.x, b.z - a.z), sc = Math.hypot(b.x, b.z) * 1.4 - d + (b.ctl !== 'bot' ? 1.5 : 0) + rand(0, 3); if (sc > bs) { bs = sc; ai.vic = b; } }
+    }
+    const v = ai.vic; let tx = -a.x * 0.1, tz = -a.z * 0.1, dash = false, jump = false;
+    if (v) {
+      // get on the inside of the victim, then charge outward through it
+      const vr = Math.hypot(v.x, v.z) || 1, ix = v.x - v.x / vr * 2.2, iz = v.z - v.z / vr * 2.2;
+      const inside = Math.hypot(ix - a.x, iz - a.z), d = Math.hypot(v.x - a.x, v.z - a.z) || 1;
+      if (inside > 1.4 && r > vr - 0.5) { tx = ix - a.x; tz = iz - a.z; }       // circle in toward the inside spot
+      else { tx = v.x - a.x; tz = v.z - a.z; const facing = (Math.sin(a.yaw) * tx + Math.cos(a.yaw) * tz) / d; dash = d < 3.2 && facing > 0.7 && Math.random() < dt * 5; }
+      jump = !!(v.dashT > 0 && d < 3.2 && Math.random() < 0.5 && r < R - 2);
+    }
+    if (ai.idle) { tx *= 0.1; tz *= 0.1; }
+    if (r > safe) { const l0 = Math.hypot(tx, tz) || 1, w = clamp((r - safe) / 2.5, 0, 1.2); tx = lerp(tx / l0, -a.x / r, w); tz = lerp(tz / l0, -a.z / r, w); }
+    const l = Math.hypot(tx, tz) || 1, sp = Math.min(1, l / 0.4);
+    return { ax: tx / l * 0.95 * sp, az: tz / l * 0.95 * sp, dash: dash && r < R - 1.5, jump };
   }
   elim(a) {
     a.alive = false; a.out = true; a.bean.root.visible = false; this.out.push(a);
@@ -2555,7 +2582,7 @@ class SumoMode extends BaseMode {
       let ax = 0, az = 0, dash = false, J = null;
       if (!frozen) {
         if (a.ctl !== 'bot') { const I = this.inp(a); ax = I.mx; az = -I.my; dash = I.bP || I.fP; J = I; }
-        else { const r = this.ai(a, dt); ax = r.ax; az = r.az; dash = r.dash; J = { aP: r.jump }; }
+        else { const r = this.ai(a, dt); [ax, az] = botGuard(a, dt, r.ax, r.az); dash = r.dash; J = { aP: r.jump }; }
       }
       const air = !a.grounded;
       a.vx += ax * (air ? 14 : 38) * dt; a.vz += az * (air ? 14 : 38) * dt;
@@ -2662,7 +2689,10 @@ class SnakeMode extends BaseMode {
   botTarget(a, dt) {
     const ai = a.ai; ai.t -= dt; let target = a.dir;
     let best = null, bd = 196;
-    for (const f of this.food) { const dd = d2(a.x, a.z, f.x, f.z); if (dd < bd) { bd = dd; best = f; } }
+    if (ai.banT > 0) ai.banT -= dt;
+    for (const f of this.food) { if (ai.banT > 0 && f === ai.ban) continue; const dd = d2(a.x, a.z, f.x, f.z); if (dd < bd) { bd = dd; best = f; } }
+    // a pellet inside our turning circle gets orbited forever: after 1.5 s of chasing the same one, drop it
+    if (best && best === ai.tgt) { ai.tgtT = (ai.tgtT || 0) + dt; if (ai.tgtT > 1.5) { ai.ban = best; ai.banT = 3; ai.tgtT = 0; best = null; bd = 196; } } else { ai.tgt = best; ai.tgtT = 0; }
     if (best) target = Math.atan2(best.x - a.x, best.z - a.z);
     else { if (ai.t <= 0) { ai.t = rand(1, 2.5); ai.wd = rand(0, 6.28); } target = ai.wd; }
     const prey = this.actors.find(b => b.ctl !== 'bot' && b.alive && a.len > b.len + 4 && d2(a.x, a.z, b.x, b.z) < 120);
@@ -2827,12 +2857,20 @@ class TurfMode extends BaseMode {
     const ai = a.ai; ai.t = (ai.t || 0) - dt;
     if (ai.tx != null && d2(a.x, a.z, ai.tx, ai.tz) < 1) ai.t = 0;
     if (ai.t <= 0) {
-      ai.t = rand(1.2, 2.5);
+      ai.t = rand(2, 3.5);
       const b = this.bombs.find(b => d2(a.x, a.z, b.x, b.z) < 150);
       if (b) { ai.tx = b.x; ai.tz = b.z; }
       else {
         let best = -1, bs = -Infinity; const lead = this.counts.indexOf(Math.max(...this.counts));
-        for (let n = 0; n < 16; n++) { const k = randi(0, this.N - 1), o = this.owner[k]; const sc = (o === a.i ? -60 : o < 0 ? 10 : 13 + (o === lead ? 4 : 0)) - Math.sqrt(d2(a.x, a.z, this.cx[k], this.cz[k])) * 0.7; if (sc > bs) { bs = sc; best = k; } }
+        const hx = Math.sin(a.yaw), hz = Math.cos(a.yaw);
+        for (let n = 0; n < 28; n++) {
+          const k = randi(0, this.N - 1), o = this.owner[k], dx = this.cx[k] - a.x, dz = this.cz[k] - a.z, d = Math.hypot(dx, dz) || 1;
+          let val = o === a.i ? -60 : o < 0 ? 10 : 13 + (o === lead ? 4 : 0);
+          // count paintable tiles around it: big unclaimed patches are worth a trip
+          for (let m = 0; m < 6; m++) { const an = m / 6 * Math.PI * 2, kk = this.tileAt(this.cx[k] + Math.cos(an) * 2.2, this.cz[k] + Math.sin(an) * 2.2); if (kk >= 0 && this.owner[kk] !== a.i) val += 1.5; }
+          const sc = val - Math.abs(d - 9) * 0.6 + (hx * dx + hz * dz) / d * 4;
+          if (sc > bs) { bs = sc; best = k; }
+        }
         ai.tx = this.cx[best]; ai.tz = this.cz[best];
       }
     }
@@ -2870,7 +2908,7 @@ class TurfMode extends BaseMode {
       let mx = 0, mz = 0, dash = false, J = null;
       if (!frozen) {
         if (a.ctl !== 'bot') { const I = this.inp(a); mx = I.mx; mz = -I.my; dash = I.bP; J = I; }
-        else { const d = this.aiDir(a, dt); mx = d.x; mz = d.z; dash = d.dash; J = { aP: d.jump }; }
+        else { const d = this.aiDir(a, dt); [mx, mz] = botGuard(a, dt, d.x, d.z); dash = d.dash; J = { aP: d.jump }; }
       }
       if (dash && a.dashCd <= 0) { a.dashT = 0.45; a.dashCd = 1.8; a.bean && a.bean.dash && a.bean.dash(); FX.snd('dash', a.x, a.z); FX.ring(a.x, 0, a.z, a.color, 1.8, 0.3); }
       const sp = a.dashT > 0 ? 16 : 9, k = 1 - Math.exp(-(a.grounded ? 12 : 5) * dt);
@@ -3446,6 +3484,7 @@ class ShooterMode extends BaseMode {
           if (n) {
             const dx = (n.t.x - a.x) / n.d, dz = (n.t.z - a.z) / n.d, fw = n.d > 12 ? 1 : n.d < 6 ? -0.8 : 0.15;
             mx = dx * fw + -dz * ai.side * 0.8; mz = dz * fw + dx * ai.side * 0.8;
+            [mx, mz] = botGuard(a, dt, mx, mz);
             aimYaw = Math.atan2(n.t.x - a.x, n.t.z - a.z) + ai.err;
             fire = n.d < 17 && this.los(a.x, a.z, n.t.x, n.t.z);
             dash = a.hp < 40 && Math.random() < dt;
@@ -3599,7 +3638,17 @@ class MunchMode extends BaseMode {
         if (b.size >= a.size * 1.2 && d < this.radius(b) + 6 * ai.skill && d < td) { td = d; threat = b; }
         if (a.size >= b.size * 1.2 && !(b.inv > 0) && d < 12 && d < pd) { pd = d; prey = b; }
       }
-      if (threat) { ai.mode = 'flee'; ai.tx = a.x + (a.x - threat.x); ai.tz = a.z + (a.z - threat.z); }
+      if (threat) {
+        // flee: the direction that ends farthest from the threat while staying inside the walls
+        ai.mode = 'flee'; let bx = a.x, bz = a.z, bsc = -1e9; const lim = this.L - 3;
+        for (let k = 0; k < 12; k++) {
+          const an = k / 12 * Math.PI * 2, nx = a.x + Math.sin(an) * 7, nz = a.z + Math.cos(an) * 7;
+          const out = Math.max(0, Math.abs(nx) - lim) + Math.max(0, Math.abs(nz) - lim);
+          const sc = Math.hypot(nx - threat.x, nz - threat.z) - out * 4;
+          if (sc > bsc) { bsc = sc; bx = clamp(nx, -lim, lim); bz = clamp(nz, -lim, lim); }
+        }
+        ai.tx = bx; ai.tz = bz;
+      }
       else if (prey && Math.random() < ai.skill) { ai.mode = 'hunt'; ai.prey = prey; }
       else {
         ai.mode = 'food'; let bs = -1, bp = null;
@@ -3652,7 +3701,7 @@ class MunchMode extends BaseMode {
       let ax = 0, az = 0, dash = false;
       if (!frozen) {
         if (a.ctl !== 'bot') { const I = this.inp(a); ax = I.mx; az = -I.my; dash = I.bP || I.aP; }
-        else ({ ax, az, dash } = this.ai(a, dt));
+        else { ({ ax, az, dash } = this.ai(a, dt)); [ax, az] = botGuard(a, dt, ax, az); }
       }
       const l = Math.hypot(ax, az); if (l > 1) { ax /= l; az /= l; }
       const sp = (a.dashT > 0 ? 19 : 9.2) / Math.pow(a.size, 0.18) * (1 + (a.size - 1) * 0.12);
@@ -3849,7 +3898,8 @@ class BombMode extends BaseMode {
   ai(a, dt) {
     const ai = a.ai, i = this.ci(a.x), j = this.cj(a.z), D = this.danger(), here = this.idx(i, j);
     ai.t -= dt; let bomb = false;
-    if (ai.t <= 0 || D[here] < 3) {
+    const planning = !(ai.path && ai.path.length) || ai.t < -1.2;
+    if ((ai.t <= 0 && planning) || D[here] < 3) {
       ai.t = rand(0.25, 0.45);
       if (D[here] < Infinity) ai.path = this.bfs(a, i, j, (x, y, k) => D[k] === Infinity, null);   // run!
       else {
@@ -5095,6 +5145,167 @@ class HexDropMode extends BaseMode {
   timeUp() { return this.result(); }
 }
 
+// =====================================================================
+//  JUMP SHOWDOWN  (the other final): two spinning beams sweep the round stage.
+//  Jump the low one, stay on the ground for the high one. They speed up, and slices of the floor drop away.
+// =====================================================================
+const JS_FIELDS = ['x', 'y', 'z', 'yaw', 'out', 'grounded'];
+class ShowdownMode extends BaseMode {
+  start() {
+    scene.background = BG_GAME;
+    const R = this.R = 9, S = this.S = 8;
+    this.slices = []; this.t = 0; this.outN = 0; this.hudT = 0;
+    this.lowA = Math.PI * 0.62; this.highA = Math.PI * 1.62; this.spd = 1.05; this.dropT = 26;
+    const stage = grp(world, [0, 0, 0]);
+    for (let k = 0; k < S; k++) {
+      const a0 = k / S * Math.PI * 2, g = grp(stage, [0, 0, 0]);
+      const m = part(g, new THREE.CylinderGeometry(R, R, 1.2, 24, 1, false, a0, Math.PI * 2 / S), mat(k % 2 ? 0xffd84a : 0xff8fd0, { roughness: 0.45 }), [0, -0.6, 0]);
+      const rim = part(g, new THREE.CylinderGeometry(R + 0.25, R + 0.25, 0.5, 24, 1, true, a0, Math.PI * 2 / S), mat(0xffffff, { roughness: 0.4, side: THREE.DoubleSide }), [0, -0.15, 0]);
+      m.receiveShadow = true;
+      this.slices.push({ g, a0, a1: a0 + Math.PI * 2 / S, st: 0, y: 0 });   // st: 0 ok, >0 shaking, <0 gone
+    }
+    part(stage, new THREE.CylinderGeometry(1.1, 1.3, 3.4, 20), mat(0x7a5cff, { roughness: 0.3 }), [0, 1.2, 0]);
+    part(stage, new THREE.CylinderGeometry(1.3, 1.3, 0.3, 20), mat(0xffd21f, { emissive: 0xff8a00, emissiveIntensity: 0.4 }), [0, 2.95, 0]);
+    const stripe = checkerTex('#ff3d6e', '#ffffff', 2); stripe.wrapS = THREE.RepeatWrapping; stripe.repeat.set(8, 1);
+    const beam = (y, len, col) => { const g = grp(stage, [0, y, 0]); const m = part(g, new THREE.BoxGeometry(len, 0.45, 0.45), new THREE.MeshStandardMaterial({ map: stripe, color: col, roughness: 0.35 }), [len / 2 + 1, 0, 0]); m.castShadow = true; part(g, SPH(), mat(col), [len + 1, 0, 0], 0.35); return g; };
+    this.lowG = beam(0.45, R - 0.6, 0xffffff); this.highG = beam(2.35, R - 0.6, 0x3aa0ff);
+    addClouds(world, 18, -8, 90); addClouds(world, 10, 10, 110);
+    const sea = mesh(new THREE.PlaneGeometry(600, 600), mat(0x5fc8ff, { roughness: 0.35 }), false); sea.rotation.x = -Math.PI / 2; sea.position.y = -14; world.add(sea);
+    const n = this.lineup.length;
+    this.actors = this.lineup.map((p, i) => {
+      const a = makeActor(p, i); addRing(a, a.color); const an = i / n * Math.PI * 2 + 0.2;
+      Object.assign(a, { x: Math.sin(an) * 5.5, z: Math.cos(an) * 5.5, y: 0, vy: 0, grounded: true, out: false, stun: 0 });
+      a.ai = { skill: rand(0.55, 1), err: rand(-0.06, 0.06), t: 0, tr: rand(4, 6.5), ta: an, hold: 0 };
+      a.yaw = Math.atan2(-a.x, -a.z); syncActor(a); return a;
+    });
+    const f = this.focus(); camTo(0, 15, 15, 0, 0, 1);
+  }
+  sliceAt(x, z) { let an = Math.atan2(x, z); if (an < 0) an += Math.PI * 2; return this.slices[Math.min(this.S - 1, Math.floor(an / (Math.PI * 2) * this.S))]; }
+  floorAt(x, z) { const r = Math.hypot(x, z); if (r > this.R) return null; const s = this.sliceAt(x, z); return s.st < 0 ? null : 0; }
+  // seconds until the arm reaches angle a (it turns at +spd rad/s for low, -spd for high)
+  eta(armA, dir, a) { let d = (a - armA) * dir; d = ((d % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2); return d / this.spd; }
+  aiMove(a, dt) {
+    const ai = a.ai; ai.t -= dt;
+    const an = Math.atan2(a.x, a.z), r = Math.hypot(a.x, a.z);
+    // stand on a solid slice, in the middle band; drift away from slices that are shaking
+    if (ai.t <= 0) {
+      ai.t = rand(1.5, 3);
+      let best = ai.ta, bs = -1e9;
+      for (let k = 0; k < 16; k++) { const ta = k / 16 * Math.PI * 2, s = this.sliceAt(Math.sin(ta), Math.cos(ta)); const sc = (s.st === 0 ? 5 : s.st > 0 ? -6 : -50) - Math.abs(angDiff(ta, an)) * 1.2 + rand(0, 1.5); if (sc > bs) { bs = sc; best = ta; } }
+      ai.ta = best; ai.tr = rand(3.8, 6.8);
+    }
+    const tx = Math.sin(ai.ta) * ai.tr, tz = Math.cos(ai.ta) * ai.tr, dx = tx - a.x, dz = tz - a.z, d = Math.hypot(dx, dz);
+    const sp = d > 0.4 ? 0.8 : 0;
+    // jump the low beam: a bit early or late depending on skill
+    // time until the beam's edge touches our body (the beam is thick and we are round, so a bit before it lines up)
+    const edge = 0.55 / (Math.max(1.6, r) * this.spd);
+    const lowEta = this.eta(this.lowA, 1, an) - edge, highEta = (this.eta(this.highA, -1, an) - edge) / 0.85;
+    const want = clamp(0.2 + ai.err + (1 - ai.skill) * rand(-0.1, 0.1), 0.1, 0.45);
+    // in the air from ~0.07 s to ~0.63 s after takeoff: the low beam must pass inside that window, the high one outside it
+    const clashAt = lead => { const h = highEta - lead; return h > 0.02 && h < 0.68; };   // high beam inside the air window if we jump in `lead` s
+    let jump = a.grounded && lowEta > 0.07 && lowEta < want && !clashAt(0);
+    // both beams coming close together: a good player jumps early so they are already down when the high one passes
+    if (!jump && a.grounded && lowEta > 0.07 && lowEta < 0.56 && clashAt(Math.max(0, lowEta - want)) && !clashAt(0) && Math.random() < 0.35 + ai.skill * 0.6) jump = true;
+    return { x: d > 0.01 ? dx / d * sp : 0, z: d > 0.01 ? dz / d * sp : 0, jump };
+  }
+  hit(a, armA, dir, high) {
+    this.hits = this.hits || { low: 0, high: 0 }; this.hits[high ? 'high' : 'low']++;
+    const tx = Math.cos(armA) * dir, tz = -Math.sin(armA) * dir;   // the beam's direction of travel at this point
+    const r = Math.hypot(a.x, a.z) || 1;
+    a.vx = tx * 8.5 + a.x / r * 3.5; a.vz = tz * 8.5 + a.z / r * 3.5; a.vy = 6.5; a.grounded = false; a.stun = 0.7; a.hitCd = 0.6;
+    FX.burst(a.x, a.y + 0.8, a.z, [0xff3d6e, 0xffffff, a.color], 16, 7, 0.15, 0.6); FX.snd('hit', a.x, a.z); shakeFor(a, 0.5); a.bean.hit && a.bean.hit(1);
+    notify(a, high ? 'Stay low for the high beam!' : 'Jump the low beam!');
+  }
+  update(dt, frozen) {
+    if (this.follower) { this.t += dt; this.spin(dt, frozen); smoothActors(this.actors, dt); this.view(dt); return; }
+    this.t += dt;
+    const pLow = this.lowA, pHigh = this.highA;
+    this.spin(dt, frozen);
+    if (!frozen) {
+      this.dropT -= dt;
+      if (this.dropT <= 0) {
+        this.dropT = Math.max(5, 9 - this.t * 0.03);
+        const ok = this.slices.filter(s => s.st === 0); if (ok.length > 3) { const s = pick(ok); s.st = 1.6; Sound.play('crate', 0.5); }
+      }
+    }
+    for (const s of this.slices) { if (s.st > 0) { s.st -= dt; if (s.st <= 0) s.st = -0.001; } else if (s.st < 0) s.st -= dt; }
+    for (const a of this.actors) {
+      if (a.out) continue;
+      a.stun = Math.max(0, a.stun - dt); a.hitCd = Math.max(0, (a.hitCd || 0) - dt);
+      let mx = 0, mz = 0, jump = false;
+      if (!frozen && a.stun <= 0) {
+        if (a.ctl !== 'bot') { const I = this.inp(a); mx = I.mx; mz = -I.my; jump = I.aP || I.bP; }
+        else ({ x: mx, z: mz, jump } = this.aiMove(a, dt));
+      }
+      const k = 1 - Math.exp(-(a.grounded && a.stun <= 0 ? 14 : a.stun > 0 ? 0.6 : 3) * dt);
+      a.vx = lerp(a.vx, mx * 7.5, k); a.vz = lerp(a.vz, mz * 7.5, k);
+      a.x += a.vx * dt; a.z += a.vz * dt;
+      const pr = Math.hypot(a.x, a.z); if (pr < 1.6) { a.x *= 1.6 / pr; a.z *= 1.6 / pr; }   // the pillar
+      if (jump && a.grounded) { a.vy = 10.5; a.grounded = false; personal(a, 'jump'); FX.dust(a.x, a.z, 3); }
+      const fl = this.floorAt(a.x, a.z);
+      if (a.grounded) { if (fl == null) a.grounded = false; else { a.y = 0; a.vy = 0; } }
+      if (!a.grounded) {
+        const py = a.y; a.vy -= 30 * dt; a.y += a.vy * dt;
+        if (fl != null && py >= -0.05 && a.y <= 0 && a.vy <= 0) { if (a.vy < -8) { a.bean.land(); FX.dust(a.x, a.z, 4); } a.y = 0; a.vy = 0; a.grounded = true; }
+      }
+      // beams: the low one catches feet, the high one catches anyone in the air
+      if (!frozen && a.hitCd <= 0 && a.y > -0.5 && this.t > 1.5) {
+        const an = Math.atan2(a.x, a.z), r = Math.hypot(a.x, a.z);
+        const crossed = (p0, p1, dir) => { const d0 = angDiff(p0, an), d1 = angDiff(p1, an); return Math.abs(d1) * r < 0.55 || (Math.sign(d0) !== Math.sign(d1) && Math.abs(d0) < 1 && Math.abs(d1) < 1); };
+        if (r < this.R + 0.3 && a.y < 0.62 && crossed(pLow, this.lowA)) this.hit(a, this.lowA, 1, false);
+        else if (r < this.R + 0.3 && a.y + 1.6 > 2.15 && crossed(pHigh, this.highA)) this.hit(a, this.highA, -1, true);
+      }
+      if (a.y < -10 && !frozen) {
+        a.out = true; a.alive = false; a.outN = ++this.outN; a.bean.root.visible = false;
+        FX.snd('ko', a.x, a.z); notify(a, 'You fell off!');
+        const left = this.actors.filter(b => !b.out).length;
+        for (const b of this.actors) if (!b.out) notify(b, `${a.p.name} is out! ${left} left`);
+        if (this.humansOut() || left <= stopAt(this.def)) this.finishIn(1.4, () => this.result());
+      }
+      const s = Math.hypot(a.vx, a.vz); if (s > 0.5 && a.stun <= 0) a.yaw = turnToward(a.yaw, Math.atan2(a.vx, a.vz), 13 * dt);
+    }
+    separate(this.actors.filter(a => !a.out), 0.45);
+    this.view(dt); this.tickPending(dt);
+  }
+  spin(dt, frozen) {
+    if (frozen) return;
+    this.spd = Math.min(2.7, 1.05 + this.t * 0.018);
+    this.lowA = (this.lowA + this.spd * dt) % (Math.PI * 2);
+    this.highA = (this.highA - this.spd * 0.85 * dt + Math.PI * 2) % (Math.PI * 2);
+  }
+  view(dt) {
+    // the arms point along +x at rotation 0; our angle is measured from +z, so rotate by angle - 90 degrees
+    this.lowG.rotation.y = this.lowA - Math.PI / 2; this.highG.rotation.y = this.highA - Math.PI / 2;
+    for (const s of this.slices) {
+      if (s.st > 0) { s.g.position.set(Math.sin(this.t * 60) * 0.06, Math.sin(this.t * 47) * 0.04, 0); }
+      else if (s.st < 0) { const tt = -s.st; s.g.position.set(0, -tt * tt * 12, 0); s.g.visible = tt < 2.5; }
+    }
+    for (const a of this.actors) {
+      if (a.out) { a.bean.root.visible = false; continue; }
+      const sp = this.follower ? (a.mv || 0) : Math.hypot(a.vx, a.vz);
+      syncActor(a); a.bean.animate(dt, a.grounded ? clamp(sp / 7, 0, 1) : 0, !a.grounded);
+    }
+    this.hudT -= dt;
+    if (this.hudT <= 0) {
+      this.hudT = 0.3; const left = this.actors.filter(a => !a.out);
+      HUD.info(`<div class="chip">${icon('users', 22)} ${left.length}/${this.actors.length}</div><div class="chip nexthint">SPEED ${Math.round(this.spd / 1.05 * 100)}%</div>`);
+      HUD.board(left.map(a => ({ n: a.p.name, c: a.color, v: 0, me: a.isPlayer })), () => 'IN');
+    }
+    const f = this.focus() || this.actors[0], port = View.port;
+    camTo(f.x * (port ? 0.1 : 0.35), port ? 23 : 14, f.z * (port ? 0.1 : 0.35) + (port ? 17 : 13), f.x * (port ? 0.05 : 0.25), port ? -1 : 0, f.z * (port ? 0.05 : 0.25), dt, 4); lightFollow(0, 0);
+  }
+  netSnap() { return { a: packActors(this.actors, JS_FIELDS), l: q2(this.lowA), h: q2(this.highA), s: q2(this.spd), d: this.slices.map(s => s.st === 0 ? 0 : s.st > 0 ? 1 : 2).join('') }; }
+  netApply(m) {
+    unpackActors(this.actors, JS_FIELDS, m.a); this.lowA = m.l; this.highA = m.h; this.spd = m.s;
+    m.d.split('').forEach((c, i) => { const s = this.slices[i]; if (c === '1' && s.st === 0) s.st = 1.6; else if (c === '2' && s.st >= 0) s.st = -0.001; });
+  }
+  result() {
+    const s = shuffle(this.actors.slice()).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0) || (b.outN || 0) - (a.outN || 0));
+    return makeResult(s.map(a => row(a, a.out ? 'OUT' : 'SURVIVED')), this.def.q);
+  }
+  timeUp() { return this.result(); }
+}
+
 
 // =====================================================================
 //  7) DRAW & GUESS
@@ -5637,6 +5848,7 @@ const MODE_DEFS = {
   draw: { name: 'Doodle Guess', ico: 'm_draw', color: 'linear-gradient(135deg,#ffd21f,#ff7a2e)', desc: 'Draw the secret word and guess what the others are drawing. Fast guesses score more!', keys: [['MOUSE', 'Draw'], ['ENTER', 'Guess']], duration: null, players: 6, q: 3, cls: DrawMode, touch: null, goal: 'Top 3 by points qualify' },
   hang: { name: 'Hangman', ico: 'm_hang', color: 'linear-gradient(135deg,#7a5cff,#2fd6c6)', desc: 'One player picks a secret real word. Everyone else takes turns guessing a letter, or the whole word. Six misses and the word wins!', keys: [['A-Z', 'Guess a letter'], ['ENTER', 'Guess the word']], duration: null, players: 6, q: 3, cls: HangMode, touch: null, goal: 'Top 3 by points qualify' },
   hexdrop: { name: 'Hex Drop', ico: 'm_hexdrop', color: 'linear-gradient(135deg,#ff8fd0,#6fd8ff)', desc: 'Every hexagon you step on shakes and drops away! Three floors to fall through. Keep moving, hop the gaps, and be the last one standing.', keys: [['WASD', 'Move'], ['SPACE', 'Jump']], duration: 150, players: 8, q: 3, cls: HexDropMode, touch: ['JUMP', ''], goal: 'Last one standing wins', music: 'battle' },
+  showdown: { name: 'Jump Showdown', ico: 'm_showdown', color: 'linear-gradient(135deg,#ff3d6e,#9fd8ff)', desc: 'Two beams spin around the stage. JUMP over the low one, stay on the ground for the high one. They get faster, and the floor starts falling away!', keys: [['WASD', 'Move'], ['SPACE', 'Jump']], duration: 150, players: 8, q: 3, cls: ShowdownMode, touch: ['JUMP', ''], goal: 'Last one standing wins', music: 'battle' },
   turf: { name: 'Hex Paint', ico: 'm_turf', color: 'linear-gradient(135deg,#a06bff,#2fb5ff)', desc: 'Run over hex tiles to paint them your color. Jump to ground-pound a big splash!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 6, q: 3, cls: TurfMode, touch: ['JUMP', 'DASH'], goal: 'Top 3 by paint qualify' },
 };
 const MODE_IDS = Object.keys(MODE_DEFS);
@@ -5682,14 +5894,14 @@ function clearWorld() {
 const WORD_MODES = ['draw', 'hang'];
 // Party Mix: 4 games (5 with a 10-player opener), only a couple knocked out each round until 3 reach the final.
 // A single-game show is a 3-round mini tournament of that game (Sky Summit and the word games stay one long round).
-const LONG_MODES = ['climb'];
+const LONG_MODES = ['climb'], FINALS = ['hexdrop', 'showdown'];
 function pickEpisode(showId) {
   const s = SHOWS.find(x => x.id === (showId || save.show)) || SHOWS[0];
   if (s.mode) return WORD_MODES.includes(s.mode) || LONG_MODES.includes(s.mode) ? [s.mode] : [s.mode, s.mode, s.mode];
-  const any = MODE_IDS.filter(m => !WORD_MODES.includes(m) && !LONG_MODES.includes(m) && m !== 'hexdrop'), big = any.filter(m => MODE_DEFS[m].players >= 8);
+  const any = MODE_IDS.filter(m => !WORD_MODES.includes(m) && !LONG_MODES.includes(m) && !FINALS.includes(m)), big = any.filter(m => MODE_DEFS[m].players >= 8);
   const ep = [pick(big)], rounds = MODE_DEFS[ep[0]].players >= 10 ? 5 : 4;
   while (ep.length < rounds - 1) ep.push(pick(any.filter(m => !ep.includes(m))));
-  ep.push('hexdrop');   // the final is always Hex Drop: last one standing
+  ep.push(pick(FINALS));   // the final is a last-one-standing showdown
   return ep;
 }
 // how many go through each round: an even slide from everyone down to 3 finalists, then 1 winner
@@ -5837,9 +6049,11 @@ function showResults(res, final, R, crown) {
     cl.onclick = () => {
       hideHand(); save.coins += R.hold; save.freeSpins = (save.freeSpins || 0) + 1; save.tutorial = 2; persist();
       sfx('coin'); sfx('win', 0.6); confettiBurst(120, '#ffd21f'); updateWallet();
-      cl.outerHTML = `<button class="btn yellow" id="rLobbyT">CONTINUE ${icon('play', 20)}</button>`;
-      $('#rLobbyT').onclick = () => { sfx('click'); Game.tutorial = false; exitToLobby(); };
-      setTimeout(() => pointAt('#rLobbyT', 'NEXT'), 300);
+      // straight on into a real show: the fastest way to the fun part. The lobby (and the free spin) can wait.
+      cl.outerHTML = `<button class="btn yellow big" id="rFirstShow">PLAY PARTY MIX ${icon('play', 20)}</button><button class="btn" id="rLobbyT">LOBBY</button>`;
+      $('#rFirstShow').onclick = () => { sfx('click'); hideHand(); Game.tutorial = false; save.show = 'main'; persist(); exitToLobby(); quickPlay(); };
+      $('#rLobbyT').onclick = () => { sfx('click'); hideHand(); Game.tutorial = false; exitToLobby(); };
+      setTimeout(() => pointAt('#rFirstShow', 'PLAY!'), 300);
     };
   }
   if (pub && nx) { let n = 6; const tk = () => { if (!$('#rAuto')) return; if (n <= 0) return nx.onclick(); $('#rAuto').textContent = n--; later(tk, 1000); }; tk(); }
