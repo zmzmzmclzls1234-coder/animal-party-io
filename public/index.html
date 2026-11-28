@@ -2181,6 +2181,8 @@ const gridFrom = (s, arr) => { for (let i = 0; i < arr.length && i < s.length; i
 // =====================================================================
 //  MODE BASE
 // =====================================================================
+// in a show, an elimination round stops once only the qualifiers are left (the final goes on to the last one)
+const stopAt = def => (Game.episode && Game.episode.length > 1 && !Game.tutorial) ? Math.max(1, def.q) : 1;
 function makeResult(rows, q) { rows.forEach((r, i) => r.q = r.forceQ != null ? r.forceQ : (i < q && !r.out)); return { rows, q }; }
 const row = (a, label, extra) => Object.assign({ p: a.p, label, out: !!a.out }, extra);
 class BaseMode {
@@ -2252,11 +2254,11 @@ class PaperMode extends BaseMode {
     a.trailCells = []; a.count = 0;
     FX.hit(a.x, 1, a.z, 1.2, this.actors.indexOf(a), cause && cause.i != null ? this.actors.indexOf(cause) : -1, cause && cause !== a && cause.i != null ? 'CUT!' : null, a.color); FX.ring(a.x, 0.2, a.z, a.color, 4); FX.snd('hit', a.x, a.z);
     a.bean.root.visible = false;
-    if (a.ctl !== 'bot') {
-      a.out = true; shakeFor(a, 0.5);
-      notify(a, cause === 'wall' ? 'You hit the wall!' : cause === 'self' ? 'You crossed your own trail!' : 'Your trail got cut!');
-      if (this.humansOut()) this.finishIn(1.4, () => this.result());
-    } else a.respawn = 2.5;
+    // nobody comes back: a cut trail is final for players and everyone else alike
+    a.out = true; a.outN = (this.outN = (this.outN || 0) + 1);
+    if (a.ctl !== 'bot') { shakeFor(a, 0.5); notify(a, cause === 'wall' ? 'You hit the wall!' : cause === 'self' ? 'You crossed your own trail!' : 'Your trail got cut!'); }
+    const left = this.actors.filter(b => b.alive).length;
+    if (this.humansOut() || left <= stopAt(this.def)) this.finishIn(1.4, () => this.result());
   }
   capture(a) {
     const G = this.G, N = this.N, own = this.owner;
@@ -2390,7 +2392,7 @@ class PaperMode extends BaseMode {
   }
   result() {
     this.countUp();
-    const s = shuffle(this.actors.slice()).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0) || b.count - a.count);
+    const s = shuffle(this.actors.slice()).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0) || (a.out ? (b.outN || 0) - (a.outN || 0) : b.count - a.count));
     return makeResult(s.map(a => row(a, a.out ? 'OUT' : (a.count / this.N * 100).toFixed(1) + '%')), this.def.q);
   }
   timeUp() { return this.result(); }
@@ -2540,7 +2542,7 @@ class SumoMode extends BaseMode {
       if (hit) { const x = (a.x + b.x) / 2, z = (a.z + b.z) / 2; FX.snd('hit', x, z); FX.hit(x, 1, z, 1, this.actors.indexOf(hit), this.actors.indexOf(by), 'BAM!', by.color); FX.ring(x, 0.6, z, 0xffd21f, 2.4, 0.35); shakeFor(hit, 0.35); }
     });
     const standing = this.actors.filter(a => a.alive && !a.falling);
-    if (!frozen && !this.done && standing.length <= 1 && this.actors.every(a => !a.alive || !a.falling)) this.finishIn(1.2, () => this.result(false));
+    if (!frozen && !this.done && standing.length <= stopAt(this.def) && this.actors.every(a => !a.alive || !a.falling)) this.finishIn(1.2, () => this.result(false));
     this.view(dt);
     this.tickPending(dt);
   }
@@ -2610,7 +2612,7 @@ class SnakeMode extends BaseMode {
     a.out = true; a.outN = (this.outN = (this.outN || 0) + 1);
     if (a.ctl !== 'bot') { notify(a, 'Crashed!'); shakeFor(a, 0.5); }
     const left = this.actors.filter(b => b.alive).length;
-    if (this.humansOut() || left <= 1) this.finishIn(1.4, () => this.result());
+    if (this.humansOut() || left <= stopAt(this.def)) this.finishIn(1.4, () => this.result());
   }
   danger(x, z, self, r = 1.6) {
     const rr = r * r;
@@ -3221,7 +3223,7 @@ class RaceMode extends BaseMode {
       a.stun -= dt;
       let tx = 0, tz = 0, jump = false, dive = false;
       if (!frozen && !a.finished && a.stun <= 0) {
-        if (a.ctl !== 'bot') { const I = this.inp(a); tx = I.mx * 10.5; tz = -I.my * 10.5; jump = I.aP; dive = I.bP; }
+        if (a.ctl !== 'bot') { const I = this.inp(a); tx = I.mx * 10.5; tz = -I.my * 10.5; jump = I.aP; dive = I.bP || (I.aP && !a.grounded); }   // press JUMP again in the air to dive
         else ({ tx, tz, jump, dive } = this.botCtl(a, dt));
       }
       if (a.finished) { tx = 0; tz = a.z > this.FINISH_Z - 6 ? -4 : 0; }
@@ -3942,7 +3944,7 @@ class BombMode extends BaseMode {
 //  2.5D SIDE-VIEW SHARED (Sky Summit + Knockback)
 //  world: x = left/right, y = up, z = depth (actors live on z = 0)
 // =====================================================================
-const SV = { G: 38, RUN: 8.6, J1: 15.4, J2: 12.8, COY: 0.1, BUF: 0.14, HW: 0.36, MAXF: -25 };
+const SV = { G: 44, RUN: 10, J1: 18.2, J2: 15, COY: 0.12, BUF: 0.16, HW: 0.36, MAXF: -28 };
 const SIDE_YAW = d => (d > 0 ? 1 : -1) * 1.08;          // three-quarter profile: faces lean toward the camera
 const svBox = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 
@@ -4007,6 +4009,11 @@ function sidePhys(a, dt, I, plats, opt = {}) {
     if (!p.on || !p.solid || p === a.gp) continue;
     const bot = p.y - p.th;
     if (a.y < p.y - 0.06 && a.y + BODY > bot + 0.02 && a.x > p.x0 - SV.HW && a.x < p.x1 + SV.HW) {
+      // feet already near the top edge: pop up onto it instead of catching on the corner
+      if (a.y > p.y - 0.75 && a.vy > -9) {
+        a.y = p.y; a.vy = 0; a.grounded = true; a.gp = p; a.jumps = 0; a.cut = false; a.ff = false; a.spring = false; ev.push('step');
+        if (p.onLand) p.onLand(a); continue;
+      }
       const cx = (p.x0 + p.x1) / 2;
       if (a.x < cx) { a.x = p.x0 - SV.HW; if (a.vx > 0) a.vx = 0; } else { a.x = p.x1 + SV.HW; if (a.vx < 0) a.vx = 0; }
     }
@@ -4024,13 +4031,19 @@ function sidePhys(a, dt, I, plats, opt = {}) {
     if (opt.solids && a.vy > 0) for (const p of plats) {
       if (!p.on || !p.solid || a.x <= p.x0 - SV.HW + 0.05 || a.x >= p.x1 + SV.HW - 0.05) continue;
       const bot = p.y - p.th;
-      if (py + BODY <= bot + 0.06 && a.y + BODY > bot) { a.y = bot - BODY; a.vy = 0; a.spring = false; ev.push('bonk'); break; }
+      if (py + BODY <= bot + 0.06 && a.y + BODY > bot) {
+        // clipped just the corner: slide around it and keep rising
+        const inL = a.x - (p.x0 - SV.HW), inR = (p.x1 + SV.HW) - a.x;
+        if (Math.min(inL, inR) < 0.55) { a.x = inL < inR ? p.x0 - SV.HW - 0.01 : p.x1 + SV.HW + 0.01; continue; }
+        a.y = bot - BODY; a.vy = 0; a.spring = false; ev.push('bonk'); break;
+      }
     }
     if (a.vy <= 0) for (const p of plats) {
       if (!p.on || a.x < p.x0 - SV.HW || a.x > p.x1 + SV.HW) continue;
       if (a.drop > 0 && !p.solid) continue;
       const top = p.y, before = top - (p.dy || 0);
-      if (py >= before - 0.08 && a.y <= top + 0.001) {
+      // one-way ledges forgive a jump that tops out a little short of the surface
+      if ((py >= before - 0.08 || (!p.solid && py >= top - 0.5)) && a.y <= top + 0.001) {
         const impact = -a.vy; a.y = top; a.vy = 0; a.grounded = true; a.gp = p; a.jumps = 0; a.cut = false; a.ff = false; a.spring = false;
         if (p.spring) { a.vy = p.spring; a.grounded = false; a.gp = null; a.jumps = 1; a.spring = true; ev.push('boing'); }
         else ev.push(impact > 12 ? 'land' : 'step');
@@ -4074,12 +4087,12 @@ function sideSnd(name, a, vol = 1) {
 //  every platform is a solid block (no jumping up through it), and each game gets a fresh layout.
 // =====================================================================
 const SUMMITS = [
-  { name: 'EMBERWALL ASCENT', side: 'stone', top: 'grass', len: 64, fog: 0xbfe4ff, feat: { big: 0.22, spring: 0.08 } },
-  { name: 'CORAL CLIMB', side: 'coral', top: 'sand', len: 38, fog: 0x7fd6f0, feat: { spring: 0.25, bob: 0.22 } },
+  { name: 'EMBERWALL ASCENT', side: 'stone', top: 'grass', len: 64, fog: 0xbfe4ff, feat: { spring: 0.2, sink: 0.18, big: 0.15, move: 0.08 } },
+  { name: 'CORAL CLIMB', side: 'coral', top: 'sand', len: 38, fog: 0x7fd6f0, feat: { spring: 0.22, bob: 0.2, sink: 0.14 } },
   { name: 'AGENT ADVENTURE', side: 'metal', top: 'metal', len: 68, fog: 0x4b4a9a, feat: { move: 0.2, blink: 0.2, conv: 0.14 } },
-  { name: 'GROWING UP', side: 'wood', top: 'hay', len: 64, fog: 0xffcf98, feat: { crumble: 0.3, spring: 0.1, big: 0.1 } },
-  { name: 'FROSTY PEAKS', side: 'snow', top: 'ice', len: 52, fog: 0xdde9ff, feat: { ice: 0.55, slide: 1, big: 0.15 } },
-  { name: 'ONE WAY UP', side: 'crystal', top: 'crystal', len: 114, fog: 0x3a2470, feat: { laser: 0.3, move: 0.15, blink: 0.14, big: 0.12 } },
+  { name: 'GROWING UP', side: 'wood', top: 'hay', len: 64, fog: 0xffcf98, feat: { crumble: 0.26, spring: 0.12, sink: 0.14, big: 0.1 } },
+  { name: 'FROSTY PEAKS', side: 'snow', top: 'ice', len: 52, fog: 0xdde9ff, feat: { ice: 0.55, slide: 1, big: 0.15, sink: 0.12 } },
+  { name: 'ONE WAY UP', side: 'crystal', top: 'crystal', len: 114, fog: 0x3a2470, feat: { laser: 0.28, move: 0.14, blink: 0.13, big: 0.11, sink: 0.08 } },
 ];
 const SBASE = []; { let y = 0; for (const S of SUMMITS) { SBASE.push(y); y += S.len; } }
 const SUM_TOP = SBASE[SBASE.length - 1] + SUMMITS[SUMMITS.length - 1].len, XLIM = 15.5, M_PER = 1000 / SUM_TOP;
@@ -4167,7 +4180,7 @@ class ClimbMode extends BaseMode {
     const ok = (np, cur) => {
       const [nx0, nx1] = span(np);
       if (nx0 < -XLIM || nx1 > XLIM) return false;
-      const nb = np.y - np.th - (np.amp || 0);
+      const nb = np.y - np.th - (np.amp || 0) - (np.sinkMax || 0);
       for (const q of this.P) {
         if (q === start) continue;
         const [qx0, qx1] = span(q), qt = q.y + (q.amp || 0) + (q.kind === 'move' ? 0 : 0);
@@ -4182,7 +4195,7 @@ class ClimbMode extends BaseMode {
     let cur = start, dir = 1, curX = [-12, -9];   // the start meadow behaves like a ledge at its left side
     const edge = (p, d) => p === start ? (d > 0 ? curX[1] : curX[0]) : (d > 0 ? span(p)[1] : span(p)[0]);
     const launch = (p, d) => {      // spring / jump pad at the outer end of p: the way up at a switchback
-      const w = 1.5, sx = d > 0 ? p.x1 - w - 0.15 : p.x0 + 0.15; p.spr = { x0: sx, x1: sx + w, v: 26 };
+      const w = 1.5, sx = d > 0 ? p.x1 - w - 0.15 : p.x0 + 0.15; p.spr = { x0: sx, x1: sx + w, v: 28 };
       this.pads.push({ kind: 'pad', x0: sx, x1: sx + w, y: p.y + 0.02, sec: p.sec });
     };
     for (let k = 0; k < SUMMITS.length; k++) {
@@ -4191,7 +4204,7 @@ class ClimbMode extends BaseMode {
       while (cur.y < topY - 4.5 && guard++ < 400) {
         // pick what comes next
         let kind = 'n'; const roll = R(); let acc = 0;
-        for (const key of ['spring', 'bob', 'move', 'blink', 'crumble', 'laser', 'big', 'conv']) { if (F[key] && roll >= acc && roll < acc + F[key]) { kind = key; break; } acc += F[key] || 0; }
+        for (const key of ['spring', 'sink', 'bob', 'move', 'blink', 'crumble', 'laser', 'big', 'conv']) { if (F[key] && roll >= acc && roll < acc + F[key]) { kind = key; break; } acc += F[key] || 0; }
         if (F.slide && !slid && cur.y > SBASE[k] + S.len * 0.35) kind = 'slide';
         if (cur.spr || cur.kind === 'move' || cur.kind === 'bob' || cur.kind === 'blink' || cur.kind === 'crumble') { if (kind === 'spring' || kind === 'move') kind = 'n'; }
         let placed = null;
@@ -4212,12 +4225,23 @@ class ClimbMode extends BaseMode {
             placed = add(q); slab(batches[k], placed); this.route.push(placed); dir = d;
             break;
           }
+          if (kind === 'spring' && cur !== start && cur.kind === 'n' && !cur.spr) {
+            // a jump pad at the end of this ledge flings you up to a high one ahead
+            const sx = d > 0 ? cur.x1 - 1.65 : cur.x0 + 0.15, x0 = d > 0 ? cur.x1 + rr(1.2, 2.6) : cur.x0 - rr(1.2, 2.6) - w;
+            const np = { x0, x1: x0 + w, y: cur.y + rr(5.6, 7), th: 1.1, sec: k, kind: 'n' };
+            if (!ok(np, cur)) continue;
+            cur.spr = { x0: sx, x1: sx + 1.5, v: 28 }; this.pads.push({ kind: 'pad', x0: sx, x1: sx + 1.5, y: cur.y + 0.02, sec: k });
+            placed = add(np); slab(batches[k], placed); this.route.push(placed); dir = d;
+            break;
+          }
           const x0 = d > 0 ? edge(cur, d) + gap : edge(cur, d) - gap - w;
-          const np = { x0, x1: x0 + w, y: cur.y + dy, th: kind === 'blink' ? 0.5 : kind === 'bob' ? 0.6 : 1.1, sec: k, kind: kind === 'big' || kind === 'spring' ? 'n' : kind };
+          const np = { x0, x1: x0 + w, y: cur.y + dy, th: kind === 'blink' ? 0.5 : kind === 'bob' || kind === 'sink' ? 0.7 : 1.1, sec: k, kind: kind === 'big' || kind === 'spring' ? 'n' : kind };
+          if (kind === 'sink') np.sinkMax = 2.6;
           if (kind === 'bob') { np.amp = rr(0.6, 0.9); }
           if (!ok(np, cur)) continue;
           placed = add(np); dir = d;
           if (kind === 'bob') { placed.by = placed.y; placed.per = rr(2.6, 3.6); placed.ph = rr(0, 6); this.dyn.push(placed); }
+          else if (kind === 'sink') { placed.by = placed.y; placed.s = 0; this.dyn.push(placed); }
           else if (kind === 'blink') { placed.per = rr(3.2, 3.8); placed.duty = 0.62; placed.ph = rr(0, 6); this.dyn.push(placed); }
           else if (kind === 'crumble') { placed.cr = 0; placed.down = 0; placed.th = 0.9; this.dyn.push(placed); placed.onLand = () => { if (!placed.cr && !placed.down) placed.cr = 0.55; }; }
           else if (kind === 'conv') { placed.conv = rr(2.2, 3.2) * (chance(0.5) ? 1 : -1); slab(batches[k], placed); }
@@ -4237,6 +4261,7 @@ class ClimbMode extends BaseMode {
           }
           const d = -dir, w = rr(3, 4.2);
           if (cur === start) { dir = -dir; continue; }
+          if (cur.spr) { const o = cur.spr; this.pads = this.pads.filter(q => q.x0 !== o.x0 || Math.abs(q.y - cur.y) > 0.1); cur.spr = null; }
           launch(cur, -d);
           const sx = cur.spr.x0, inward = d < 0 ? sx - 0.7 - w : cur.spr.x1 + 0.7;
           const np = { x0: clamp(inward, -XLIM, XLIM - w), x1: 0, y: cur.y + rr(7.0, 7.5), th: 1.1, sec: k, kind: 'n' }; np.x1 = np.x0 + w;
@@ -4252,6 +4277,7 @@ class ClimbMode extends BaseMode {
         if (ok(np, cur)) { sm = add(np); dir = d; }
       }
       if (!sm) {
+        if (cur.spr) { const o = cur.spr; this.pads = this.pads.filter(q => q.x0 !== o.x0 || Math.abs(q.y - cur.y) > 0.1); cur.spr = null; }
         launch(cur, dir); const w = 10, x0 = clamp(dir > 0 ? cur.spr.x0 - 0.7 - w : cur.spr.x1 + 0.7, -XLIM, XLIM - w);
         sm = add({ x0, x1: x0 + w, y: cur.y + 7.2, th: 2.0, sec: k, kind: 'summit', summit: k + 1 }); dir = -dir;
       }
@@ -4263,7 +4289,7 @@ class ClimbMode extends BaseMode {
     this.route.forEach((p, i) => p.ri = i);
     this.topY = this.P[this.P.length - 1].y;
     // solid blocks (moving and bobbing ones stay one-way so they can never trap you)
-    for (const p of this.P) p.solid = !(p.kind === 'move' || p.kind === 'bob');
+    for (const p of this.P) p.solid = !(p.kind === 'move' || p.kind === 'bob' || p.kind === 'sink');
     SUMMITS.forEach((S, k) => {
       const side = new THREE.MeshStandardMaterial({ map: themeTex(S.side), roughness: S.side === 'metal' ? 0.45 : 0.85, metalness: S.side === 'metal' ? 0.35 : 0 });
       const top = new THREE.MeshStandardMaterial({ map: themeTex(S.top), roughness: S.top === 'ice' ? 0.12 : S.top === 'metal' ? 0.4 : 0.8, metalness: S.top === 'metal' ? 0.35 : 0 });
@@ -4290,6 +4316,7 @@ class ClimbMode extends BaseMode {
       const w = p.x1 - p.x0, loc = { x0: -w / 2, x1: w / 2, y: 0, th: p.th };
       if (p.kind === 'blink') mats = [new THREE.MeshStandardMaterial({ map: themeTex('holo'), emissiveMap: themeTex('holo'), emissive: 0xffffff, emissiveIntensity: 0.9, transparent: true, opacity: 0.92, roughness: 0.3 }), null];
       else if (p.kind === 'crumble') mats = [new THREE.MeshStandardMaterial({ map: themeTex('hay'), roughness: 0.9 }), null];
+      else if (p.kind === 'sink') mats = [new THREE.MeshStandardMaterial({ map: themeTex(S.side), color: 0xffa860, roughness: 0.7, emissive: 0x552200, emissiveIntensity: 0.25 }), this['mat' + p.sec].top];
       else mats = [this['mat' + p.sec].side, this['mat' + p.sec].top];
       if (!mats[1]) mats[1] = mats[0];
       slab(b, loc, p.kind === 'move' ? 2.4 : 2.8, 0.26);
@@ -4363,6 +4390,10 @@ class ClimbMode extends BaseMode {
       const ox = p.x0, oy = p.y;
       if (p.kind === 'move') { const k = (1 - Math.cos((t + p.ph) / p.per * Math.PI * 2)) / 2; p.x0 = p.mx + p.span * k; p.x1 = p.x0 + p.w; }
       else if (p.kind === 'bob') p.y = p.by + Math.sin((t + p.ph) / p.per * Math.PI * 2) * p.amp;
+      else if (p.kind === 'sink') {   // sinks while anyone stands on it, floats back up when they leave
+        const on = this.actors.some(a => a.grounded && !(a.dead > 0) && Math.abs(a.y - p.y) < 0.3 && a.x > p.x0 - 0.4 && a.x < p.x1 + 0.4);
+        p.s = clamp(p.s + (on ? 1.7 : -1.1) * dt, 0, p.sinkMax); p.y = p.by - p.s;
+      }
       else if (p.kind === 'blink') p.on = this.blinkState(p, t).on;
       else if (p.kind === 'crumble') {
         if (p.cr > 0) { p.cr -= dt; if (p.cr <= 0) { p.cr = 0; p.down = 3.2; p.on = false; if (this.near(p)) Sound.play('crate', 0.6); FX.burst((p.x0 + p.x1) / 2, p.y - 0.4, 0, [0xe8bf4c, 0xffe08a, 0xb5552e], 16, 5, 0.16, 0.7); } }
@@ -4587,11 +4618,15 @@ class KnockMode extends BaseMode {
     this.movers = this.P.filter(p => p.move); this.statics = this.P.filter(p => !p.move);
     // islands: candy-tile tops on rock, chunky floating undersides
     const B = new BoxBatch();
-    for (const p of this.statics) slab(B, p, p.main ? 4 : 3, 0.4);
+    for (const p of this.statics) if (!p.step) slab(B, p, p.main ? 4 : 3, 0.4);
     const rock = new THREE.MeshStandardMaterial({ map: themeTex('stone'), roughness: 0.9, color: 0xd8c7ff }), top = new THREE.MeshStandardMaterial({ map: themeTex('candy'), roughness: 0.55 });
     world.add(B.build([rock, top]));
     for (const p of this.P.filter(q => q.main)) { const under = mesh(sg('kunder', () => new THREE.ConeGeometry(7, 8, 9, 1)), new THREE.MeshStandardMaterial({ map: themeTex('stone'), color: 0xb7a6ff, roughness: 1, flatShading: true })); under.rotation.x = Math.PI; under.position.set((p.x0 + p.x1) / 2, -9, -0.4); under.scale.z = 0.3; world.add(under); }
-    for (const p of this.statics.filter(q => !q.main)) { const c = mesh(sg('kcone', () => new THREE.ConeGeometry(1, 2.4, 7)), new THREE.MeshStandardMaterial({ map: themeTex('stone'), color: 0xc6b8ff, roughness: 1, flatShading: true })); c.rotation.x = Math.PI; c.position.set((p.x0 + p.x1) / 2, p.y - 1.9, 0); c.scale.set((p.x1 - p.x0) * 0.42, 1, 1.3); world.add(c); }
+    for (const p of this.statics.filter(q => !q.main && !q.step)) { const c = mesh(sg('kcone', () => new THREE.ConeGeometry(1, 2.4, 7)), new THREE.MeshStandardMaterial({ map: themeTex('stone'), color: 0xc6b8ff, roughness: 1, flatShading: true })); c.rotation.x = Math.PI; c.position.set((p.x0 + p.x1) / 2, p.y - 1.9, 0); c.scale.set((p.x1 - p.x0) * 0.42, 1, 1.3); world.add(c); }
+    for (const p of this.statics.filter(q => q.step)) {
+      const sb = new BoxBatch(), w = p.x1 - p.x0; slab(sb, { x0: -w / 2, x1: w / 2, y: 0, th: p.th }, 3, 0.4);
+      p.g = grp(world, [(p.x0 + p.x1) / 2, p.y, 0]); p.g.add(sb.build([new THREE.MeshStandardMaterial({ map: themeTex('stone'), color: 0xffa860, roughness: 0.8 }), top]));
+    }
     for (const mv of this.movers) {
       const mb = new BoxBatch(); slab(mb, { x0: -2, x1: 2, y: 0, th: 0.6 }, 2.4, 0.3);
       mv.g = grp(world, [mv.mx, mv.y, 0]); mv.g.add(mb.build([mat(0xffffff, { roughness: 0.5 }), top]));
@@ -4726,6 +4761,12 @@ class KnockMode extends BaseMode {
   }
   update(dt, frozen) {
     if (!frozen) this.t += dt;
+    for (const p of this.P) if (p.step) {   // the little stepping ledges sink under your weight
+      if (p.by == null) { p.by = p.y; p.s = 0; }
+      const on = this.actors.some(a => a.grounded && !(a.dead > 0) && Math.abs(a.y - p.y) < 0.3 && a.x > p.x0 - 0.4 && a.x < p.x1 + 0.4), oy = p.y;
+      p.s = clamp(p.s + (on ? 1.8 : -1.2) * dt, 0, 3.2); p.y = p.by - p.s; p.dy = p.y - oy;
+      if (p.g) p.g.position.y = p.y;
+    }
     for (const mv of this.movers) { const ox = mv.x0; mv.x0 = mv.mx - 2 + Math.sin(this.t / mv.per * Math.PI * 2 + mv.mx) * mv.span; mv.x1 = mv.x0 + 4; mv.dx = mv.x0 - ox; }
     if (this.follower) { smoothActors(this.actors, dt); this.stepShots(dt, false); this.view(dt); return; }
     for (const a of this.actors) {
@@ -5118,8 +5159,8 @@ let HANG_SET = null, HANG_LIST = null, HANG_FULL = false, HANG_LOADING = null;
 function hangFallback() { HANG_LIST = [...new Set(HANG_COMMON.concat(DRAW_WORDS.filter(w => /^[a-z]+$/.test(w)), DRAWINGS.map(d => d.w).filter(w => /^[a-z]+$/.test(w))))]; HANG_SET = new Set(HANG_LIST); }
 function hangLoad() {
   if (HANG_LOADING) return HANG_LOADING;
-  HANG_LOADING = fetch('words.txt').then(r => r.ok ? r.text() : null).then(s => {
-    if (!s || s.length < 1000) throw 0;
+  const get = u => fetch(u).then(r => r.ok ? r.text() : null).then(t => { if (!t || t.length < 1000 || !/^0[a-z]/.test(t)) throw 0; return t; });
+  HANG_LOADING = get('words.txt').catch(() => get('https://animal-party-io.onrender.com/words.txt')).then(s => {
     const L = []; let prev = '', i = 0;
     while (i < s.length) { const k = +s[i++]; let j = i; while (j < s.length && (s[j] < '0' || s[j] > '9')) j++; const w = prev.slice(0, k) + s.slice(i, j); L.push(w); prev = w; i = j; }
     for (const w of HANG_COMMON) if (!L.includes(w)) L.push(w);
@@ -5129,7 +5170,7 @@ function hangLoad() {
 }
 function hangDict() { if (!HANG_SET) hangFallback(); hangLoad(); return HANG_SET; }
 // is this a real word? with the full list loaded: look it up; if the list could not load at all, accept any letters
-function isRealWord(w) { hangDict(); return HANG_FULL === true ? HANG_SET.has(w) : HANG_FULL === 'failed' ? true : HANG_SET.has(w); }
+function isRealWord(w) { hangDict(); return HANG_SET.has(w); }   // never 'anything goes': without the full list only the built-in words count
 const HANG_MAX = 6, HANG_ABC = 'abcdefghijklmnopqrstuvwxyz';
 
 class HangMode extends BaseMode {
@@ -5232,7 +5273,7 @@ class HangMode extends BaseMode {
     ch.innerHTML = `<div class="hset"><h3>Pick a secret word!</h3><p>Any real English word, 4 to 10 letters.</p><div class="hrow"><input id="hSet" maxlength="10" autocomplete="off" placeholder="type a word"><button class="btn yellow" id="hGo">OK</button></div><div class="herr" id="hErr"></div><div class="opts">${sug.map(w => `<button class="btn" data-w="${w}">${w.toUpperCase()}</button>`).join('')}</div></div>`;
     const go = w => {
       w = String(w || '').trim().toLowerCase();
-      const err = !/^[a-z]+$/.test(w) ? 'Letters only, please.' : w.length < 4 || w.length > 10 ? 'Use 4 to 10 letters.' : !isRealWord(w) ? (HANG_FULL ? `"${w.toUpperCase()}" is not in the dictionary.` : 'Still loading the dictionary... try again in a second.') : '';
+      const err = !/^[a-z]+$/.test(w) ? 'Letters only, please.' : w.length < 4 || w.length > 10 ? 'Use 4 to 10 letters.' : !isRealWord(w) ? (HANG_FULL === false ? 'Still loading the dictionary... try again in a second.' : `"${w.toUpperCase()}" is not a real word. Try another!`) : '';
       if (err) { $('#hErr').textContent = err; sfx('error'); const i = $('#hSet'); i.classList.remove('shake'); void i.offsetWidth; i.classList.add('shake'); return; }
       ch.classList.add('hidden'); sfx('click'); this.myWord = w;
       if (this.follower) Net.toHost({ k: 'hset', w }); else this.begin(w);
@@ -5380,15 +5421,15 @@ class HangMode extends BaseMode {
 //  MODES & SHOWS
 // =====================================================================
 const MODE_DEFS = {
-  bomb: { name: 'Bomb Bash', ico: 'm_bomb', color: 'linear-gradient(135deg,#ff7a1a,#3a3a55)', desc: 'Drop bombs to blast crates and rivals! Blasts go in a cross. Grab FIRE, BOMB and SPEED power-ups. Most KOs wins.', keys: [['WASD', 'Move'], ['SPACE', 'Bomb']], duration: 120, players: 8, q: 4, cls: BombMode, touch: ['BOMB'], goal: 'Most KOs wins', music: 'battle' },
-  climb: { name: 'Sky Summit', ico: 'm_climb', color: 'linear-gradient(135deg,#5fb8ff,#a06bff)', desc: 'Parkour up 6 summits to 1000 m! A new mountain every game. Every summit is a checkpoint. Double jump, bounce on jump pads, dodge the lasers. Don\'t look down!', keys: [['A D', 'Run'], ['SPACE / W', 'Jump · Double jump']], duration: 420, players: 8, q: 4, cls: ClimbMode, touch: ['JUMP', ''], goal: 'First 4 to the top qualify', music: 'climb' },
-  knock: { name: 'Knockback', ico: 'm_knock', color: 'linear-gradient(135deg,#ff5fb7,#3aa0ff)', desc: 'Blast rivals to raise their %. The higher it gets, the farther they fly. Knock them off the sky islands for KOs! Grab RAPID, MEGA and SHIELD orbs.', keys: [['A D', 'Move'], ['SPACE / W', 'Jump'], ['MOUSE', 'Aim + Fire'], ['S', 'Drop / fast fall']], duration: 120, players: 8, q: 4, cls: KnockMode, touch: ['JUMP', 'FIRE'], goal: 'Most KOs wins', music: 'battle' },
-  munch: { name: 'Party Munch', ico: 'm_munch', color: 'linear-gradient(135deg,#ff8a3d,#ff5fb7)', desc: 'Eat candy, cupcakes, chairs... the whole party! The bigger you get, the bigger things you can eat. Swallow smaller animals, run from bigger ones.', keys: [['WASD', 'Move'], ['SHIFT', 'Dash']], duration: 120, players: 8, q: 4, cls: MunchMode, touch: ['DASH'], goal: 'Get the biggest!' },
-  paper: { name: 'Land Grab', ico: 'm_paper', color: 'linear-gradient(135deg,#2fd36a,#1fa2ff)', desc: 'Leave your land, draw a trail and loop back to claim everything inside. Get your trail cut and you are out!', keys: [['WASD', 'Move']], duration: 90, players: 8, q: 4, cls: PaperMode, touch: ['', ''], goal: 'Top 4 by land qualify' },
-  sumo: { name: 'Bump Arena', ico: 'm_sumo', color: 'linear-gradient(135deg,#ff5fb7,#ffb02e)', desc: 'Shove everyone off the shrinking stage. Jump to dodge, dash to send them flying!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 75, players: 8, q: 4, cls: SumoMode, touch: ['JUMP', 'DASH'], goal: 'Last 4 standing qualify' },
-  snake: { name: 'Snake Rush', ico: 'm_snake', color: 'linear-gradient(135deg,#7ee081,#11b5a4)', desc: 'Eat orbs to grow long. Crash your head into another tail and you are out!', keys: [['WASD', 'Steer'], ['SPACE', 'Boost']], duration: 90, players: 8, q: 4, cls: SnakeMode, touch: ['BOOST', ''], goal: 'Top 4 by length qualify' },
-  race: { name: 'Obstacle Dash', ico: 'm_race', color: 'linear-gradient(135deg,#ff7ad9,#7a5cff)', desc: 'Sweepers, gaps, pushers and hammers stand between you and the finish line. Run!', keys: [['WASD', 'Run'], ['SPACE', 'Jump'], ['SHIFT', 'Dive']], duration: 150, players: 10, q: 6, cls: RaceMode, touch: ['JUMP', 'DIVE'], goal: 'First 6 to finish qualify', music: 'climb' },
-  shooter: { name: 'Jelly Blaster', ico: 'm_shooter', color: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)', desc: 'Paint-blast everyone! Four hits and they are splatted. You respawn after a splat.', keys: [['WASD', 'Move'], ['MOUSE', 'Aim + Fire'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 90, players: 8, q: 4, cls: ShooterMode, touch: ['FIRE', 'DASH'], goal: 'Top 4 by splats qualify', music: 'battle' },
+  bomb: { name: 'Bomb Bash', ico: 'm_bomb', color: 'linear-gradient(135deg,#ff7a1a,#3a3a55)', desc: 'Drop bombs to blast crates and rivals! Blasts go in a cross. Grab FIRE, BOMB and SPEED power-ups. Most KOs wins.', keys: [['WASD', 'Move'], ['SPACE', 'Bomb']], duration: 90, players: 8, q: 4, cls: BombMode, touch: ['BOMB'], goal: 'Most KOs wins', music: 'battle' },
+  climb: { name: 'Sky Summit', ico: 'm_climb', color: 'linear-gradient(135deg,#5fb8ff,#a06bff)', desc: 'Parkour up 6 summits to 1000 m! A new mountain every game. Every summit is a checkpoint. Double jump, bounce on jump pads, dodge the lasers. Don\'t look down!', keys: [['A D', 'Run'], ['SPACE / W', 'Jump · Double jump']], duration: 360, players: 8, q: 4, cls: ClimbMode, touch: ['JUMP', ''], goal: 'First 4 to the top qualify', music: 'climb' },
+  knock: { name: 'Knockback', ico: 'm_knock', color: 'linear-gradient(135deg,#ff5fb7,#3aa0ff)', desc: 'Blast rivals to raise their %. The higher it gets, the farther they fly. Knock them off the sky islands for KOs! Grab RAPID, MEGA and SHIELD orbs.', keys: [['A D', 'Move'], ['SPACE / W', 'Jump'], ['MOUSE', 'Aim + Fire'], ['S', 'Drop / fast fall']], duration: 90, players: 8, q: 4, cls: KnockMode, touch: ['JUMP', 'FIRE'], goal: 'Most KOs wins', music: 'battle' },
+  munch: { name: 'Party Munch', ico: 'm_munch', color: 'linear-gradient(135deg,#ff8a3d,#ff5fb7)', desc: 'Eat candy, cupcakes, chairs... the whole party! The bigger you get, the bigger things you can eat. Swallow smaller animals, run from bigger ones.', keys: [['WASD', 'Move'], ['SHIFT', 'Dash']], duration: 90, players: 8, q: 4, cls: MunchMode, touch: ['DASH'], goal: 'Get the biggest!' },
+  paper: { name: 'Land Grab', ico: 'm_paper', color: 'linear-gradient(135deg,#2fd36a,#1fa2ff)', desc: 'Leave your land, draw a trail and loop back to claim everything inside. Get your trail cut and you are out!', keys: [['WASD', 'Move']], duration: 75, players: 8, q: 4, cls: PaperMode, touch: ['', ''], goal: 'Top 4 by land qualify' },
+  sumo: { name: 'Bump Arena', ico: 'm_sumo', color: 'linear-gradient(135deg,#ff5fb7,#ffb02e)', desc: 'Shove everyone off the shrinking stage. Jump to dodge, dash to send them flying!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 8, q: 4, cls: SumoMode, touch: ['JUMP', 'DASH'], goal: 'Last 4 standing qualify' },
+  snake: { name: 'Snake Rush', ico: 'm_snake', color: 'linear-gradient(135deg,#7ee081,#11b5a4)', desc: 'Eat orbs to grow long. Crash your head into another tail and you are out!', keys: [['WASD', 'Steer'], ['SPACE', 'Boost']], duration: 75, players: 8, q: 4, cls: SnakeMode, touch: ['BOOST', ''], goal: 'Top 4 by length qualify' },
+  race: { name: 'Obstacle Dash', ico: 'm_race', color: 'linear-gradient(135deg,#ff7ad9,#7a5cff)', desc: 'Sweepers, gaps, pushers and hammers stand between you and the finish line. Run!', keys: [['WASD', 'Run'], ['SPACE', 'Jump'], ['SPACE x2', 'Dive']], duration: 120, players: 10, q: 6, cls: RaceMode, touch: ['JUMP', ''], goal: 'First 6 to finish qualify', music: 'climb' },
+  shooter: { name: 'Jelly Blaster', ico: 'm_shooter', color: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)', desc: 'Paint-blast everyone! Four hits and they are splatted. You respawn after a splat.', keys: [['WASD', 'Move'], ['MOUSE', 'Aim + Fire'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 75, players: 8, q: 4, cls: ShooterMode, touch: ['FIRE', 'DASH'], goal: 'Top 4 by splats qualify', music: 'battle' },
   draw: { name: 'Doodle Guess', ico: 'm_draw', color: 'linear-gradient(135deg,#ffd21f,#ff7a2e)', desc: 'Draw the secret word and guess what the others are drawing. Fast guesses score more!', keys: [['MOUSE', 'Draw'], ['ENTER', 'Guess']], duration: null, players: 6, q: 3, cls: DrawMode, touch: null, goal: 'Top 3 by points qualify' },
   hang: { name: 'Hangman', ico: 'm_hang', color: 'linear-gradient(135deg,#7a5cff,#2fd6c6)', desc: 'One player picks a secret real word. Everyone else takes turns guessing a letter, or the whole word. Six misses and the word wins!', keys: [['A-Z', 'Guess a letter'], ['ENTER', 'Guess the word']], duration: null, players: 6, q: 3, cls: HangMode, touch: null, goal: 'Top 3 by points qualify' },
   turf: { name: 'Hex Paint', ico: 'm_turf', color: 'linear-gradient(135deg,#a06bff,#2fb5ff)', desc: 'Run over hex tiles to paint them your color. Jump to ground-pound a big splash!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 6, q: 3, cls: TurfMode, touch: ['JUMP', 'DASH'], goal: 'Top 3 by paint qualify' },
@@ -5497,14 +5538,14 @@ function startRound(opts = {}) {
   show('#intro'); sfx('whoosh');
   let gone = false;
   const go = () => { if (gone) return; gone = true; show('#intro', false); countdown(); };
-  intro.onclick = () => { if (!follower) go(); }; later(go, 3400);
+  intro.onclick = () => { if (!follower) go(); }; later(go, 2600);
 }
 function countdown() {
   Game.state = 'count';
   const el = $('#count'); let n = 3;
   const tick = () => {
     el.classList.remove('pulse', 'go'); void el.offsetWidth;
-    if (n > 0) { el.textContent = n; el.classList.add('pulse'); sfx('tick'); n--; later(tick, 750); show('#count'); }
+    if (n > 0) { el.textContent = n; el.classList.add('pulse'); sfx("tick"); n--; later(tick, 650); show('#count'); }
     else { el.textContent = 'GO!'; el.classList.add('pulse', 'go'); goPlay(); later(() => show('#count', false), 800); }
   };
   tick();
@@ -5518,6 +5559,8 @@ function goPlay() {
 function finishRound(res, fromNet) {
   if (Game.state !== 'play') return;
   Game.state = 'ended';
+  // in a show, exactly the planned number goes through, ranked in order (a round that ended early never leaves 1 player alone)
+  if (!fromNet && Game.episode.length > 1 && !Game.tutorial && Game.mode && Game.mode.def) { const q = Math.min(Game.mode.def.q, res.rows.length); res.rows.forEach((r, i) => r.q = i < q); res.q = q; }
   if (Net.hosting()) { Net.snapT = 0; Net.tick(0); Net.bcast({ k: 'res', res: { rows: res.rows.map(r => ({ p: r.p, label: r.label, q: r.q })), q: res.q } }); }
   const me = myMid(), myRow = res.rows.find(r => r.p.mid === me);
   res.rank = myRow ? res.rows.indexOf(myRow) + 1 : 0; res.qualified = !!(myRow && myRow.q);
@@ -6473,7 +6516,8 @@ addEventListener('keydown', e => {
   }
 }, true);
 setInterval(() => CG.room(Net.party, Net.inMatch), 1000);
-window.ANIMAL_PARTY = { Game, MODE_DEFS, startShow, finishRound, exitToLobby, CONFIG, save, Net, Sound, Music, Out, Board, MM };
+window.ANIMAL_PARTY = { pickEpisode, Game, MODE_DEFS, startShow, finishRound, exitToLobby, CONFIG, save, Net, Sound, Music, Out, Board, MM };
+setTimeout(() => { try { hangLoad(); } catch (e) { } }, 5000);   // fetch the word list in the background so Hangman is ready
 
 </script>
 <div id="study" class="hidden">
