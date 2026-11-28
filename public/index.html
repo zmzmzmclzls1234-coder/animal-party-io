@@ -481,6 +481,9 @@ html.port #climbRail{top:30%;bottom:30%}
 #boardUI .bplate.bump{animation:bump .25s}
 #boardUI .bsub{font-family:'Titan One','Arial Black',sans-serif;font-size:22px;color:#fff;opacity:0;transition:opacity .4s}
 #boardUI .bsub.go{opacity:1}
+#boardUI .bgain{position:fixed;left:0;right:0;bottom:12%;font-family:'Titan One','Arial Black',sans-serif;font-size:24px;color:#ffd21f;display:flex;gap:6px;align-items:center;justify-content:center;animation:bgainIn .5s 1.2s both}
+@keyframes bgainIn{0%{opacity:0;transform:scale(.4)}70%{transform:scale(1.2)}100%{opacity:1;transform:scale(1)}}
+.oxround{font-family:'Titan One','Arial Black',sans-serif;font-size:16px;color:#fff;margin-top:4px;opacity:.9}
 @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.15)}100%{transform:scale(1)}}
 /* out screen */
 #outUI{position:absolute;inset:0;pointer-events:none;z-index:20}
@@ -501,8 +504,28 @@ html.port #climbRail{top:30%;bottom:30%}
 html.port .mmgrid{grid-template-columns:repeat(4,1fr)}
 html.port #boardUI .bplate{font-size:34px}
 .item .ipic.worn.locked{filter:grayscale(.55) brightness(.92)}
-.item .ipic.worn{width:92%;height:auto;aspect-ratio:1;object-fit:contain;background:radial-gradient(circle at 50% 60%,#fff 0,#f1ebff 70%);border-radius:14px}
+.item .ipic.worn{width:84px;height:84px;object-fit:contain;background:radial-gradient(circle at 50% 60%,#fff 0,#f1ebff 70%);border-radius:14px}
 .item .swdot{position:absolute;left:8px;top:8px;width:22px;height:22px;border-radius:50%;border:3px solid var(--ink)}
+
+/* ---------- phone lobby polish ---------- */
+.item .lk{position:absolute;top:5px;left:5px;background:var(--ink);color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;z-index:1}
+.item .lk svg{width:10px;height:10px}
+.cats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}.cats::-webkit-scrollbar{display:none}
+.cats>*{flex:none}
+html.port #customPanel{height:57%}
+html.port #customPanel h2{font-size:20px}html.port #customPanel h2 span{display:none}
+html.port #customPanel .namebox{font-size:14px}html.port #customPanel .namebox .field{font-size:16px;padding:5px 10px}
+html.port #customPanel .cats button{font-size:14px;padding:5px 12px}
+html.port .item{min-height:auto;padding:4px;border-radius:14px}html.port .item .ipic,html.port .item .ipic.worn{width:68px;height:68px}html.port .item .nm{font-size:12px}
+@media (max-height:500px) and (orientation:landscape){
+ .panel{width:min(470px,56vw);padding:10px 12px;gap:7px;border-radius:20px}
+ .panel h2{font-size:21px}.panel h2 span#unlockNote{display:none}
+ #customPanel .namebox{font-size:13px}#customPanel .namebox .field{font-size:15px;padding:4px 10px}
+ #customPanel .cats button{font-size:13px;padding:4px 11px}
+ .grid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:7px}
+ .item{min-height:auto;padding:3px;border-radius:13px}.item .ipic,.item .ipic.worn{width:60px;height:60px}.item .nm{font-size:11px}.item .rar{font-size:8px}
+ #ltoast{top:60px}
+}
 </style>
 </head>
 <body>
@@ -754,9 +777,25 @@ const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({ antialias: true, canvas, powerPreference: 'high-performance' });
 canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); window.__glLost = true; }, false);
 canvas.addEventListener('webglcontextrestored', () => { window.__glLost = false; try { resize(); } catch (e) { } }, false);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+// phones render at up to 1.5x (a 3x screen at full res melts the GPU); Quality.watch() steps down further if frames run slow
+const IS_PHONE = matchMedia('(pointer:coarse)').matches;
+const Quality = { level: 0, dpr: Math.min(window.devicePixelRatio || 1, IS_PHONE ? 1.5 : 2), acc: 0, n: 0, t: 0,
+  apply() { renderer.setPixelRatio(this.dpr); try { resize(); } catch (e) { } },
+  // average frame time over 2 s windows; drop resolution, then shadows, when the game can't hold ~40 fps
+  watch(dt) {
+    if (this.level >= 2 || document.hidden) return;
+    this.acc += dt; this.n++; this.t += dt;
+    if (this.t < 2) return;
+    const avg = this.acc / this.n; this.acc = 0; this.n = 0; this.t = 0;
+    if (avg < 0.025) return;
+    this.level++;
+    if (this.level === 1) { this.dpr = Math.max(1, Math.min(this.dpr, 1) * (this.dpr > 1.2 ? 1 : 0.85)); this.apply(); }
+    else { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const m = Array.isArray(o.material) ? o.material : [o.material]; m.forEach(x => x.needsUpdate = true); } }); }
+    console.log('[quality] stepped down to level', this.level);
+  } };
+renderer.setPixelRatio(Quality.dpr);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = IS_PHONE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 const scene = new THREE.Scene();
@@ -765,7 +804,7 @@ camera.position.set(0, 2.2, 7.2);
 const hemi = new THREE.HemisphereLight(0xffffff, 0xb7a6ff, 1.4); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 2.6);
 sun.position.set(15, 30, 10); sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(IS_PHONE ? 1024 : 2048, IS_PHONE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -36, right: 36, top: 36, bottom: -36, near: 1, far: 140 });
 sun.shadow.camera.updateProjectionMatrix();
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
@@ -1482,6 +1521,7 @@ const ICONS = {
   m_kart: `<rect x="10" y="26" width="44" height="16" rx="6" fill="#2fb5ff" ${O}/><path d="M22 26 L28 16 H40 L44 26" fill="#fff" ${O}/><circle cx="20" cy="46" r="7" fill="#2a2a3a" ${O}/><circle cx="44" cy="46" r="7" fill="#2a2a3a" ${O}/>`,
   m_race: `<path d="M16 54 V10" stroke="#1b0f3a" stroke-width="6" stroke-linecap="round"/><path d="M16 12 H50 L42 22 L50 32 H16 Z" fill="#fff" ${O}/><path d="M24 12 V32 M32 12 V32 M40 12 V24" stroke="#1b0f3a" stroke-width="3"/>`,
   m_shooter: `<circle cx="32" cy="32" r="22" fill="#fff" ${O}/><circle cx="32" cy="32" r="13" fill="#ff5252" ${O}/><circle cx="32" cy="32" r="4" fill="#fff" ${O}/>`,
+  m_hexdrop: `<path d="M32 6 L52 18 V40 L32 52 L12 40 V18 Z" fill="#ff8fd0" ${O}/><path d="M20 46 L32 39 L44 46" fill="none" stroke="#1b0f3a" stroke-width="4" stroke-linecap="round"/><path d="M26 56 L38 56 M29 61 L35 61" stroke="#6fd8ff" stroke-width="5" stroke-linecap="round"/><circle cx="32" cy="26" r="7" fill="#fff" ${O}/>`,
   m_hang: `<path d="M10 56 H40 M18 56 V8 H44 V16" stroke="#2a1650" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="44" cy="24" r="8" fill="#ffe8c2" ${O}/><path d="M44 32 V46 M44 36 L36 42 M44 36 L52 42 M44 46 L38 56 M44 46 L50 56" stroke="#7a5cff" stroke-width="5" stroke-linecap="round"/>`,
   m_draw: `<path d="M12 52 L16 38 L42 12 L52 22 L26 48 Z" fill="#ffd21f" ${O}/><path d="M42 12 L52 22" stroke="#ff5fb7" stroke-width="8"/><path d="M12 52 L16 38 L26 48 Z" fill="#ffe8c2" ${O}/>`,
   m_turf: `<path d="M20 10 L38 10 L47 26 L38 42 L20 42 L11 26 Z" fill="#a06bff" ${O}/><path d="M34 32 L50 32 L58 46 L50 60 L34 60 L26 46 Z" fill="#2fb5ff" ${O}/>`,
@@ -4891,6 +4931,170 @@ class KnockMode extends BaseMode {
 const _zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), _zHit = new THREE.Vector3();
 function aimPlane() { _ndc.set(Input.nx, Input.ny); _ray.setFromCamera(_ndc, camera); const h = _ray.ray.intersectPlane(_zPlane, _zHit); return h && isFinite(h.x) ? { x: h.x, y: h.y } : null; }
 
+// =====================================================================
+//  HEX DROP  (the final): three floors of hexagons. A tile you stand on shakes, then drops away.
+//  Fall through every floor and you are out. Keep moving; last one standing wins.
+// =====================================================================
+const HD_FIELDS = ['x', 'y', 'z', 'yaw', 'out', 'grounded'];
+const HD_COLORS = [[0xff8fd0, 0xffc2e6], [0xffd84a, 0xffeea6], [0x6fd8ff, 0xb8ecff]];
+class HexDropMode extends BaseMode {
+  start() {
+    scene.background = BG_GAME;
+    const r = this.r = 1.1, RAD = this.RAD = 10, w = this.w = Math.sqrt(3) * r;
+    this.layerY = [0, -9, -18]; this.L = this.layerY.length;
+    // axial hex grid (q, s) with |q|, |s|, |q + s| <= RAD, the same pattern on each floor
+    this.cells = []; this.key = new Map();
+    for (let q = -RAD; q <= RAD; q++) for (let s = -RAD; s <= RAD; s++) { if (Math.abs(q + s) > RAD) continue; this.key.set(q + ',' + s, this.cells.length); this.cells.push({ q, s, x: w * (q + s / 2), z: 1.5 * r * s }); }
+    const C = this.cells.length; this.C = C;
+    this.st = new Float32Array(C * this.L);   // 0 = solid, >0 = shaking (seconds left), <0 = fallen (seconds since)
+    this.m4 = new THREE.Matrix4(); this.col = new THREE.Color(); this.q4 = new THREE.Quaternion(); this.v3 = new THREE.Vector3(); this.s3 = new THREE.Vector3();
+    this.meshes = this.layerY.map((y, l) => {
+      const m = new THREE.InstancedMesh(sg('hdtile', () => new THREE.CylinderGeometry(r * 0.94, r * 0.86, 0.7, 6)), new THREE.MeshStandardMaterial({ roughness: 0.4 }), C);
+      m.castShadow = l === 0; m.receiveShadow = true; world.add(m);
+      for (let k = 0; k < C; k++) { this.col.set(HD_COLORS[l][(this.cells[k].q + this.cells[k].s * 2) % 3 === 0 ? 1 : 0]); m.setColorAt(k, this.col); }
+      return m;
+    });
+    this.dirty = new Set([0, 1, 2]); this.changed = new Set();
+    for (let l = 0; l < this.L; l++) for (let k = 0; k < C; k++) this.place(l, k);
+    addClouds(world, 18, -30, 90); addClouds(world, 10, 8, 110);
+    const water = mesh(new THREE.PlaneGeometry(600, 600), mat(0x5fc8ff, { roughness: 0.35 }), false); water.rotation.x = -Math.PI / 2; water.position.y = -34; world.add(water);
+    const n = this.lineup.length;
+    this.actors = this.lineup.map((p, i) => {
+      const a = makeActor(p, i); addRing(a, a.color); const ang = i / n * Math.PI * 2;
+      Object.assign(a, { x: Math.cos(ang) * w * RAD * 0.55, z: Math.sin(ang) * w * RAD * 0.55, y: 0, vy: 0, grounded: true, out: false, layer: 0 });
+      a.ai = { t: 0, tx: a.x, tz: a.z, skill: rand(0.5, 1), wait: 0 };
+      a.yaw = Math.atan2(-a.x, -a.z); syncActor(a); return a;
+    });
+    this.outN = 0; this.hudT = 0;
+    const f = this.focus(); camTo(f.x * 0.6, 19, f.z + 15, f.x * 0.6, 0, f.z);
+  }
+  place(l, k) {
+    const c = this.cells[k], st = this.st[l * this.C + k], y = this.layerY[l] - 0.35;
+    let dy = 0, sc = 1, rx = 0, rz = 0;
+    if (st > 0) { const sh = (0.9 - st) * 0.12; rx = Math.sin(this.t * 55 + k) * sh; rz = Math.cos(this.t * 47 + k) * sh; dy = -Math.max(0, 0.3 - st) * 0.6; }
+    else if (st < 0) { const tt = -st; dy = -tt * tt * 14; sc = Math.max(0.001, 1 - tt * 0.9); }
+    this.q4.setFromEuler(new THREE.Euler(rx, 0, rz)); this.v3.set(c.x, y + dy, c.z); this.s3.set(sc, 1, sc);
+    this.m4.compose(this.v3, this.q4, this.s3); this.meshes[l].setMatrixAt(k, this.m4); this.dirty.add(l);
+  }
+  cellAt(x, z) {
+    const s = z / (1.5 * this.r), q = x / this.w - s / 2;
+    let rq = Math.round(q), rs = Math.round(s); const rt = Math.round(-q - s);
+    const dq = Math.abs(rq - q), ds = Math.abs(rs - s), dt = Math.abs(rt - (-q - s));
+    if (dq > ds && dq > dt) rq = -rs - rt; else if (ds > dt) rs = -rq - rt;
+    const k = this.key.get(rq + ',' + rs); return k == null ? -1 : k;
+  }
+  solid(l, k) { return k >= 0 && this.st[l * this.C + k] >= 0; }
+  step(l, k) { const i = l * this.C + k; if (this.st[i] === 0) { this.st[i] = 0.9; this.changed.add(i); } }
+  // bot: hop tile to tile. Each step goes to a neighbouring solid tile with plenty of solid tiles around it;
+  // with no safe neighbour left it jumps across a gap to a tile two steps away
+  aiMove(a, dt) {
+    const ai = a.ai, l = a.layer, C = this.C;
+    if (!a.grounded) { const dx = ai.tx - a.x, dz = ai.tz - a.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, z: dz / d, jump: false }; }
+    ai.t -= dt;
+    const here = this.cellAt(a.x, a.z), hc = here >= 0 ? this.cells[here] : null;
+    const reached = d2(a.x, a.z, ai.tx, ai.tz) < 0.3 * 0.3, lost = !this.solid(l, this.cellAt(ai.tx, ai.tz));
+    if (hc && (reached || lost || ai.t <= 0)) {
+      ai.t = 0.9; ai.jump = false;
+      const free = (q, s2) => { const k = this.key.get(q + ',' + s2); return k != null && this.st[l * C + k] === 0 ? k : -1; };
+      const D1 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
+      let best = null, bs = -1e9;
+      const score = (k, far) => {
+        const c = this.cells[k]; let nb = 0; for (const [dq, ds] of D1) if (free(c.q + dq, c.s + ds) >= 0) nb++;
+        let crowd = 0; for (const b of this.actors) if (b !== a && !b.out && b.layer === l) crowd += Math.max(0, 2.6 - Math.hypot(b.x - c.x, b.z - c.z));
+        const back = ai.prev === k ? 3 : 0;
+        return nb * 2 - crowd * 2 - Math.hypot(c.x, c.z) * 0.06 - back - (far ? 4 : 0) + rand(0, 2.5 * (1.15 - ai.skill));
+      };
+      for (const [dq, ds] of D1) { const k = free(hc.q + dq, hc.s + ds); if (k < 0) continue; const sc = score(k, false); if (sc > bs) { bs = sc; best = { k, far: false }; } }
+      if (!best || bs < 1) for (const [dq, ds] of D1) { const k = free(hc.q + dq * 2, hc.s + ds * 2); if (k < 0) continue; const sc = score(k, true); if (sc > bs) { bs = sc; best = { k, far: true }; } }
+      if (best) { const c = this.cells[best.k]; ai.prev = here; ai.tx = c.x; ai.tz = c.z; ai.jump = best.far && !this.solid(l, this.cellAt((a.x + c.x) / 2, (a.z + c.z) / 2)); ai.wait = ai.skill < 0.7 && Math.random() < 0.15 ? rand(0.05, 0.25) : 0; }
+    }
+    if (ai.wait > 0) { ai.wait -= dt; return { x: 0, z: 0, jump: false }; }
+    const dx = ai.tx - a.x, dz = ai.tz - a.z, d = Math.hypot(dx, dz) || 1;
+    // jump when the gap starts under our feet
+    const ahead = this.cellAt(a.x + dx / d * 0.9, a.z + dz / d * 0.9);
+    const jump = ai.jump && (!this.solid(l, ahead) || d < 1.8);
+    if (jump) ai.jump = false;
+    const sp = Math.min(1, d / 0.6);
+    return { x: dx / d * sp, z: dz / d * sp, jump };
+  }
+  update(dt, frozen) {
+    this.t += dt;
+    if (this.follower) { smoothActors(this.actors, dt); this.view(dt); return; }
+    for (const a of this.actors) {
+      if (a.out) continue;
+      let mx = 0, mz = 0, jump = false;
+      if (!frozen) {
+        if (a.ctl !== 'bot') { const I = this.inp(a); mx = I.mx; mz = -I.my; jump = I.aP || I.bP; }
+        else ({ x: mx, z: mz, jump } = this.aiMove(a, dt));
+      }
+      const k = 1 - Math.exp(-(a.grounded ? 14 : 4) * dt);
+      a.vx = lerp(a.vx, mx * 7.4, k); a.vz = lerp(a.vz, mz * 7.4, k);
+      a.x += a.vx * dt; a.z += a.vz * dt;
+      if (jump && a.grounded) { a.vy = 11; a.grounded = false; personal(a, 'jump'); FX.dust(a.x, a.z, 3); }
+      // vertical: land on the first solid floor under your feet
+      const py = a.y; if (!a.grounded) { a.vy -= 30 * dt; a.y += a.vy * dt; }
+      const cell = this.cellAt(a.x, a.z);
+      if (a.grounded) {
+        if (!this.solid(a.layer, cell)) { a.grounded = false; a.vy = 0; }
+        else { a.y = this.layerY[a.layer]; if (!frozen) this.step(a.layer, cell); }
+      } else if (a.vy <= 0) {
+        for (let l = 0; l < this.L; l++) {
+          const fy = this.layerY[l];
+          if (py >= fy - 0.05 && a.y <= fy && this.solid(l, cell)) {
+            if (a.vy < -9) { a.bean.land(); FX.dust(a.x, a.z, 5); personal(a, 'land'); if (l > a.layer) notify(a, l === this.L - 1 ? 'LAST FLOOR!' : 'Down a floor!'); }
+            a.y = fy; a.vy = 0; a.grounded = true; a.layer = l; break;
+          }
+        }
+      }
+      if (!a.grounded) { for (let l = 0; l < this.L; l++) if (a.y < this.layerY[l] - 1) a.layer = Math.min(this.L - 1, l + 1); }
+      if (a.y < this.layerY[this.L - 1] - 9 && !frozen) {
+        a.out = true; a.alive = false; a.outN = ++this.outN; a.bean.root.visible = false;
+        FX.snd('ko', a.x, a.z); notify(a, 'You fell out!'); shakeFor(a, 0.5);
+        const left = this.actors.filter(b => !b.out).length;
+        for (const b of this.actors) if (!b.out && b !== a) notify(b, `${a.p.name} is out! ${left} left`);
+        if (this.humansOut() || left <= stopAt(this.def)) this.finishIn(1.4, () => this.result());
+      }
+      const s = Math.hypot(a.vx, a.vz); if (s > 0.4) a.yaw = turnToward(a.yaw, Math.atan2(a.vx, a.vz), 13 * dt);
+    }
+    separate(this.actors.filter(a => !a.out), 0.45);
+    // tiles: shake, then drop
+    for (const i of this.changed) {
+      const v = this.st[i];
+      if (v > 0) { const nv = v - dt; this.st[i] = nv <= 0 ? -0.0001 : nv; if (nv <= 0 && Math.random() < 0.35) { const c = this.cells[i % this.C]; FX.snd('crate', c.x, c.z); } }
+      else if (v < 0) { this.st[i] = v - dt; if (v < -2) this.changed.delete(i); }
+    }
+    this.view(dt); this.tickPending(dt);
+  }
+  view(dt) {
+    for (const i of this.changed) this.place(Math.floor(i / this.C), i % this.C);
+    for (const l of this.dirty) this.meshes[l].instanceMatrix.needsUpdate = true; this.dirty.clear();
+    for (const a of this.actors) {
+      if (a.out) { a.bean.root.visible = false; continue; }
+      const s = this.follower ? (a.mv || 0) : Math.hypot(a.vx, a.vz);
+      syncActor(a); a.bean.animate(dt, a.grounded ? clamp(s / 8, 0, 1) : 0, !a.grounded);
+    }
+    this.hudT -= dt;
+    if (this.hudT <= 0) {
+      this.hudT = 0.3; const left = this.actors.filter(a => !a.out);
+      HUD.info(`<div class="chip">${icon('users', 22)} ${left.length}/${this.actors.length}</div>`);
+      HUD.board(left.map(a => ({ n: a.p.name, c: a.color, v: this.L - a.layer, me: a.isPlayer })), v => '▮'.repeat(v));
+    }
+    const f = this.focus() || this.actors[0];
+    const port = View.port, fy = f.out ? this.layerY[this.L - 1] : f.y;
+    camTo(f.x * 0.75, fy + (port ? 22 : 17), f.z + (port ? 16 : 14), f.x * 0.75, fy - 1, f.z - 1, dt, 4); lightFollow(f.x, f.z);
+  }
+  netSnap() { const t = []; for (let i = 0; i < this.st.length; i++) t.push(this.st[i] === 0 ? 0 : this.st[i] > 0 ? 1 : 2); return { a: packActors(this.actors, HD_FIELDS), s: t.join('') }; }
+  netApply(m) {
+    unpackActors(this.actors, HD_FIELDS, m.a);
+    for (let i = 0; i < m.s.length; i++) { const c = m.s[i], v = this.st[i]; const want = c === '0' ? 0 : c === '1' ? 1 : 2; const cur = v === 0 ? 0 : v > 0 ? 1 : 2; if (want !== cur) { this.st[i] = want === 1 ? 0.9 : -0.0001; this.changed.add(i); } }
+  }
+  result() {
+    const s = shuffle(this.actors.slice()).sort((a, b) => (a.out ? 1 : 0) - (b.out ? 1 : 0) || (a.out ? (b.outN || 0) - (a.outN || 0) : a.layer - b.layer));
+    return makeResult(s.map(a => row(a, a.out ? 'OUT' : a.layer === 0 ? 'TOP FLOOR' : `FLOOR ${a.layer + 1}`)), this.def.q);
+  }
+  timeUp() { return this.result(); }
+}
+
 
 // =====================================================================
 //  7) DRAW & GUESS
@@ -5432,6 +5636,7 @@ const MODE_DEFS = {
   shooter: { name: 'Jelly Blaster', ico: 'm_shooter', color: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)', desc: 'Paint-blast everyone! Four hits and they are splatted. You respawn after a splat.', keys: [['WASD', 'Move'], ['MOUSE', 'Aim + Fire'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 75, players: 8, q: 4, cls: ShooterMode, touch: ['FIRE', 'DASH'], goal: 'Top 4 by splats qualify', music: 'battle' },
   draw: { name: 'Doodle Guess', ico: 'm_draw', color: 'linear-gradient(135deg,#ffd21f,#ff7a2e)', desc: 'Draw the secret word and guess what the others are drawing. Fast guesses score more!', keys: [['MOUSE', 'Draw'], ['ENTER', 'Guess']], duration: null, players: 6, q: 3, cls: DrawMode, touch: null, goal: 'Top 3 by points qualify' },
   hang: { name: 'Hangman', ico: 'm_hang', color: 'linear-gradient(135deg,#7a5cff,#2fd6c6)', desc: 'One player picks a secret real word. Everyone else takes turns guessing a letter, or the whole word. Six misses and the word wins!', keys: [['A-Z', 'Guess a letter'], ['ENTER', 'Guess the word']], duration: null, players: 6, q: 3, cls: HangMode, touch: null, goal: 'Top 3 by points qualify' },
+  hexdrop: { name: 'Hex Drop', ico: 'm_hexdrop', color: 'linear-gradient(135deg,#ff8fd0,#6fd8ff)', desc: 'Every hexagon you step on shakes and drops away! Three floors to fall through. Keep moving, hop the gaps, and be the last one standing.', keys: [['WASD', 'Move'], ['SPACE', 'Jump']], duration: 150, players: 8, q: 3, cls: HexDropMode, touch: ['JUMP', ''], goal: 'Last one standing wins', music: 'battle' },
   turf: { name: 'Hex Paint', ico: 'm_turf', color: 'linear-gradient(135deg,#a06bff,#2fb5ff)', desc: 'Run over hex tiles to paint them your color. Jump to ground-pound a big splash!', keys: [['WASD', 'Move'], ['SPACE', 'Jump'], ['SHIFT', 'Dash']], duration: 60, players: 6, q: 3, cls: TurfMode, touch: ['JUMP', 'DASH'], goal: 'Top 3 by paint qualify' },
 };
 const MODE_IDS = Object.keys(MODE_DEFS);
@@ -5481,9 +5686,10 @@ const LONG_MODES = ['climb'];
 function pickEpisode(showId) {
   const s = SHOWS.find(x => x.id === (showId || save.show)) || SHOWS[0];
   if (s.mode) return WORD_MODES.includes(s.mode) || LONG_MODES.includes(s.mode) ? [s.mode] : [s.mode, s.mode, s.mode];
-  const any = MODE_IDS.filter(m => !WORD_MODES.includes(m) && !LONG_MODES.includes(m)), big = any.filter(m => MODE_DEFS[m].players >= 8);
+  const any = MODE_IDS.filter(m => !WORD_MODES.includes(m) && !LONG_MODES.includes(m) && m !== 'hexdrop'), big = any.filter(m => MODE_DEFS[m].players >= 8);
   const ep = [pick(big)], rounds = MODE_DEFS[ep[0]].players >= 10 ? 5 : 4;
-  while (ep.length < rounds) ep.push(pick(any.filter(m => !ep.includes(m))));
+  while (ep.length < rounds - 1) ep.push(pick(any.filter(m => !ep.includes(m))));
+  ep.push('hexdrop');   // the final is always Hex Drop: last one standing
   return ep;
 }
 // how many go through each round: an even slide from everyone down to 3 finalists, then 1 winner
@@ -5724,7 +5930,7 @@ function updateLobby(dt) {
   const side = lobbyTab !== 'home' && innerWidth > 820;
   if (View.port) {   // portrait: character in the upper middle; a bottom sheet covers the lower part
     const sheet = lobbyTab !== 'home';
-    camTo(0, sheet ? 1.6 : 1.8, sheet ? 7.0 : (partyBeans.length ? 6.6 + Math.min(4, partyBeans.length) * 1.6 : 6.6), 0, sheet ? 0.1 : 0.9, 0, dt, 4);
+    camTo(0, sheet ? 0.9 : 1.8, sheet ? 8.6 : (partyBeans.length ? 6.6 + Math.min(4, partyBeans.length) * 1.6 : 6.6), 0, sheet ? -2.0 : 0.9, 0, dt, 4);
   } else camTo(side ? -2.3 : 0, 1.9, side ? 5.6 : (partyBeans.length ? 7.0 + Math.min(4, partyBeans.length) * 0.9 : 6.6), side ? -2.3 : 0, 1.05, 0, dt, 4);
   lightFollow(0, 0);
 }
@@ -6040,7 +6246,8 @@ const Board = {
     const fit = Math.max(bw / (View.port ? 0.9 : 1.6), bh / 0.9);
     this.cam = { z: fit * 1.25 + 3 };
     camera.position.set(0, 0.4, this.cam.z); camLook.set(0, 0, 0);
-    $('#boardUI').innerHTML = `<div class="bplate ol" id="bCount">${n} REMAIN!</div><div class="bsub ol-s" id="bSub">${Game.round + 2 >= Game.episode.length ? 'NEXT: THE FINAL!' : 'NEXT: ROUND ' + (Game.round + 2)}</div>`;
+    const won = res.qualified && Game.lastGain ? `<div class="bgain ol-s">${icon('coin', 26)} +${Game.lastGain}</div>` : '';
+    $('#boardUI').innerHTML = `<div class="bplate ol" id="bCount">${n} REMAIN!</div><div class="bsub ol-s" id="bSub">${Game.round + 2 >= Game.episode.length ? 'NEXT: THE FINAL!' : 'NEXT: ROUND ' + (Game.round + 2)}</div>${won}`;
     show('#boardUI'); sfx('whoosh'); Music.duck(true);
   },
   update(dt) {
@@ -6122,7 +6329,7 @@ const Out = {
   showRewards() {
     const s0 = Game.showStart || { coins: save.coins, xp: save.xp }, x0 = s0.xp, x1 = save.xp, c0 = s0.coins, c1 = save.coins;
     const el = $('#outXp'); show('#outXp');
-    el.innerHTML = `<div class="oxrow"><div class="oxlv ol" id="oxLv">LV ${levelInfo(x0).lv}</div><div class="oxbar"><i id="oxFill"></i><span id="oxTxt"></span></div></div><div class="oxcoin ol-s">${icon('coin', 30)} <b id="oxCoin">${c0}</b><em id="oxPlus">+${Math.max(0, c1 - c0)}</em></div>`;
+    el.innerHTML = `<div class="oxrow"><div class="oxlv ol" id="oxLv">LV ${levelInfo(x0).lv}</div><div class="oxbar"><i id="oxFill"></i><span id="oxTxt"></span></div></div><div class="oxcoin ol-s">${icon('coin', 30)} <b id="oxCoin">${c0}</b><em id="oxPlus">+${Math.max(0, c1 - c0)}</em></div>${Game.episode && Game.episode.length > 1 ? `<div class="oxround ol-s">ROUND ${Math.min(Game.round + 1, Game.episode.length)} OF ${Game.episode.length}</div>` : ''}`;
     el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); sfx('open');
     const dur = 1700, st = performance.now(); let lastLv = levelInfo(x0).lv, lastC = c0;
     const step = () => {
@@ -6139,7 +6346,9 @@ const Out = {
   leave() {
     this.active = false; show('#outUI', false);
     const host = Net.hosting();
-    if (Net.party && !host) { Net.inMatch = false; exitToLobby(true); } else exitToLobby();
+    if (Net.party && !host) { Net.inMatch = false; exitToLobby(true); }
+    else if (!Net.party) CG.midgameAd(() => exitToLobby());   // a natural break: the show is over
+    else exitToLobby();
   },
 };
 
@@ -6156,6 +6365,7 @@ const QUEST_POOL = [
   { id: 'first', txt: () => 'Finish a round in 1st place', n: [1], r: 150 },
   { id: 'online', txt: n => `Play ${n} online rounds`, n: [2, 3], r: 150 },
   { id: 'champ', txt: () => 'Win a Party Mix final', n: [1], r: 250 },
+  { id: 'final', txt: n => n > 1 ? `Reach the final ${n} times` : 'Reach a Party Mix final', n: [1, 2], r: 150 },
   { id: 'mode', txt: (n, m) => `Play ${MODE_DEFS[m].name} ${n} times`, n: [2], r: 100, mode: true },
 ];
 function ensureQuests() {
@@ -6168,7 +6378,7 @@ function bumpQuests(ev) {
   ensureQuests(); const out = [];
   for (const q of save.quests.list) {
     if (q.done) continue;
-    const inc = q.id === 'play' || (q.id === 'qual' && ev.qualified) || (q.id === 'first' && ev.rank === 1) || (q.id === 'online' && ev.online) || (q.id === 'champ' && ev.crown) || (q.id === 'mode' && ev.mode === q.m);
+    const inc = q.id === 'play' || (q.id === 'qual' && ev.qualified) || (q.id === 'first' && ev.rank === 1) || (q.id === 'online' && ev.online) || (q.id === 'champ' && ev.crown) || (q.id === 'final' && ev.final) || (q.id === 'mode' && ev.mode === q.m);
     if (!inc) continue;
     q.have = Math.min(q.need, q.have + 1);
     if (q.have >= q.need) { q.done = true; q.claimed = false; out.push(q); }
@@ -6193,7 +6403,9 @@ function nextUnlock() {
 }
 function grantRound(res, crown) {
   const online = !!Net.party;
-  let gain = res.qualified ? 60 + (res.rank === 1 ? 40 : 0) : 20;
+  // later rounds are worth more: getting deep into a show is the goal
+  const rd = Game.tutorial ? 0 : Game.round || 0;
+  let gain = res.qualified ? 50 + rd * 25 + (res.rank === 1 ? 30 : 0) : 15 + rd * 10;
   if (crown) gain += 250;
   if (online) gain = Math.round(gain * 1.25);
   const ev = liveEvent(); if (ev) gain = Math.round(gain * ev.coinMul);
@@ -6203,7 +6415,9 @@ function grantRound(res, crown) {
   const lv1 = levelInfo().lv; let lvBonus = 0;
   for (let l = lv0 + 1; l <= lv1; l++) lvBonus += 50 + l * 25;
   save.coins += lvBonus;
-  const quests = Game.tutorial ? [] : bumpQuests({ qualified: res.qualified, rank: res.rank, online, crown, mode: Game.def && Game.def.id });
+  const intoFinal = Game.episode.length > 1 && res.qualified && Game.round === Game.episode.length - 2;
+  const quests = Game.tutorial ? [] : bumpQuests({ qualified: res.qualified, rank: res.rank, online, crown, mode: Game.def && Game.def.id, final: intoFinal });
+  Game.lastGain = gain;
   let hold = 0; if (Game.tutorial) { hold = gain + 200; save.coins -= gain; }
   persist();
   return { gain, online, ev, lvUp: lv1 > lv0 ? lv1 : 0, lvBonus, quests, hold };
@@ -6367,6 +6581,7 @@ function loop(now) {
   if (Net.hosting()) Net.consumePresses();
   Particles.update(dt); FX.update(dt);
   renderer.render(scene, camera);
+  if (Game.state === 'play') Quality.watch(dt);
   Tags.update();
   endFrameInput();
 }
